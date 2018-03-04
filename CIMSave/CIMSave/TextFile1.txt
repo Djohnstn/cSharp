@@ -1,0 +1,124 @@
+﻿
+
+
+        class TestStuff
+        {
+
+            // https://stackoverflow.com/questions/1581694/gzipstream-and-decompression
+
+            static void FileCompressDecompress()
+            {
+                var string1 = "[this is a test string]{[test:a,x:y],[c:d,e:f]}" +
+                             "[this is a1 test string]{[test:a,x:y],[c:d,e:f1]}" +
+                             "[this is a2 test string]{[test:a,x:y],[c:d,e:f2]}" +
+                             "[this is a3 test string]{[test:a,x:y],[c:d,e:f3]}" +
+                             "[this is a4 test string]{[test:a,x:y],[c:d,e:f4]}" +
+                             "[this is a5 test string]{[test:a,x:y],[c:d,e:f5]}" +
+                             "[this is a6 test string]{[test:a,x:y],[c:d,e:f6]}" +
+                             "[this is a7 test string]{[test:a,x:y],[c:d,e:f7]}" +
+                             "[this is a8 test string]{[test:a,x:y],[c:d,e:f8]}" +
+                             "[this is a9 test string]{[test:a,x:y],[c:d,e:f9]}";
+                File.WriteAllText("gj.txt", string1);
+                using (Stream fs = File.OpenRead("gj.txt"))
+                using (Stream fd = File.Create("gj.gz"))
+                using (Stream csStream = new GZipStream(fd, CompressionMode.Compress))
+                {
+                    byte[] buffer = new byte[1024];
+                    int nRead;
+                    while ((nRead = fs.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        csStream.Write(buffer, 0, nRead);
+                    }
+                }
+
+                using (Stream fd = File.Create("gj.new.txt"))
+                using (Stream fs = File.OpenRead("gj.gz"))
+                using (Stream csStream = new GZipStream(fs, CompressionMode.Decompress))
+                {
+                    byte[] buffer = new byte[16384];
+                    int nRead;
+                    while ((nRead = csStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        fd.Write(buffer, 0, nRead);
+                    }
+                }
+            }
+
+
+            static void StringCompressDecompress()
+            {
+
+                var gz = new GZfileIO();
+
+                //int ix = 0;
+                //int thisSecond;
+                //int thatSecond = DateTime.UtcNow.Second;
+                //// loop around random numbes until the end of the second
+                //for (thisSecond = thatSecond; thisSecond == thatSecond;)
+                //{
+                //    rand = r.Next();
+                //    ix++;
+                //    thatSecond = DateTime.UtcNow.Second;
+                //}
+                var testString1 =
+                    UniqStr() +
+                    //UniqStr() +
+                    UniqStr();
+                    //"ipsum[this is a test string]{[test:a,x:y],[c:d,e:f]}" +
+                    //"lorem[this is a1 test string]{[test:a,x:y],[c:d,e:f1]}";
+                    //"dolor[this is a2 test string]{[test:a,x:y],[c:d,e:f2]}" +
+                    //"est[this is a3 test string]{[test:a,x:y],[c:d,e:f3]}" +
+                    //"daya[this is a4 test string]{[test:a,x:y],[c:d,e:f4]}" +
+                    //"biyu[this is a5 test string]{[test:a,x:y],[c:d,e:f5]}" +
+                    //"uku[this is a6 test string]{[test:a,x:y],[c:d,e:f6]}" +
+                    //"hudu[this is a7 test string]{[test:a,x:y],[c:d,e:f7]}" +
+                    //"byer[this is a8 test string]{[test:a,x:y],[c:d,e:f8]}" +
+                    //"shida[this is a9 test string]{[test:a,x:y],[c:d,e:f9]}" +
+                    //"finit[this is a9 test string]{[test:a,x:y],[c:d,e:fa]}";
+
+                {
+                    var file = "gz.json.gz";
+                    var rc = GZfileIO.WriteStringToGZ(file, testString1);
+                    string res = GZfileIO.ReadGZtoString(file);
+                    Console.Write($"file {file} is {rc} bytes. ");
+                    Console.WriteLine((testString1 == res) ? "OK" : "BAD");
+                }
+
+                {
+                    var file = "gz.json";
+                    var rc = GZfileIO.WriteStringToGZ(file, testString1);
+                    string res = GZfileIO.ReadGZtoString(file);
+                    Console.Write($"file {file} is {rc} bytes. ");
+                    Console.WriteLine((testString1 == res) ? "OK" : "BAD");
+                }
+            }
+
+            // https://stackify.com/csharp-random-numbers/
+            static string CRandom()
+            {   // call crypto for a big random number.
+                RNGCryptoServiceProvider provider = new RNGCryptoServiceProvider();
+                var byteArray2 = new byte[64];
+                provider.GetBytes(byteArray2);
+                //convert 8 bytes to a int64
+                var randomInt64 = BitConverter.ToInt64(byteArray2, 0).ToString();
+                var b64 = System.Convert.ToBase64String(byteArray2);
+                return randomInt64 + "." + b64.Replace("=","");
+            }
+
+            /// <summary>
+            /// Unique string 
+            /// useful to prove that the test is using current data, not from previous test
+            /// </summary>
+            /// <returns>fairly unique string</returns>
+            static string UniqStr()
+            {
+                var rand = CRandom();
+                //var tick = (int)Math.Abs(DateTime.UtcNow.Ticks % (int.MaxValue - 1));
+                //var rnd = new Random(tick);
+                //var rand = rnd.Next();
+                var dto = DateTime.UtcNow.ToString("o");
+                return $"[[{Guid.NewGuid()}..{rand}.{dto}]]";
+            }
+
+        }
+

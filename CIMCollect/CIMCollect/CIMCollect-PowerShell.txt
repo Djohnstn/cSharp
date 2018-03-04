@@ -1,0 +1,225 @@
+﻿[CimCollect]
+CimCollect=Yes
+; [[CimCollect]] is the header for one of these INI style files ; is comment
+; [x] is data set name
+; Name=key
+;[[[fake]]]
+;name=name
+;s= multi-
+;s= -line
+;s= -command
+;powerscript=[[tag[[
+;	lots of script stuff here
+;	and more script here
+;	ending with line of tagged close brackets
+;]]tag]]
+
+[BIOS]
+CimCollect=No
+Name=Manufacturer
+powershell=([wmisearcher]"Select * from win32_bios").Get()
+
+[DiskPhysical]
+Name=DeviceID
+powershell=([wmisearcher]"Select DeviceID, manufacturer, Size, Caption, Description from win32_DiskDrive").Get()
+
+[DiskLogical]
+Name=DeviceID
+powershell=([wmisearcher]"Select DeviceID, Size, FreeSpace, Caption, Description from win32_LogicalDisk").Get()
+
+[Printer]
+Name=Name
+; @" ... "@ is a Powershell multiline test string
+s=[[*/*[[
+$q=@"
+	Select Name, Availability, Description, DeviceID, DriverName, PortName, PrinterState, 
+		PrinterStatus, PrintJobDataType, PrintProcessor, SpoolEnabled, SeparatorFile, Queued, Status,
+		StatusInfo, Published, Shared, ShareName, Direct, Location, Priority, WorkOffline,
+		HorizontalResolution, VerticalResolution from Win32_Printer
+"@
+	([wmisearcher]$q).Get()
+]]*/*]]
+
+[PhysicalMemory]
+Name=Name
+powershell=([wmisearcher]"Select * from Win32_PhysicalMemory").Get()
+
+[Certificate]
+Name=FriendlyName
+s=[[*/*[[
+	Get-ChildItem Cert:\LocalMachine\My |
+	Select FriendlyName , Thumbprint, Issuer, Subject, NotAfter, NotBefore, SerialNumber, Version, Handle
+]]*/*]]
+
+[Service]
+Name=Name
+s=[[*/*[[
+	Get-WMIObject Win32_Service|
+	Select Name, pathname, State,Caption,Description,ErrorControl,DelayedAutoStart,DisplayName,Started,StartMode,Start
+]]*/*]]
+
+[CertificateInIIS]
+CimCollect=No
+Name=FriendlyName
+s=[[*/*[[
+	$sites = Get-Website | ? { $_.State -eq "Started" } | % { $_.Name }
+	$certs = Get-ChildItem IIS:SSLBindings | ? {
+           $sites -contains $_.Sites.Value
+         } | % { $_.Thumbprint }
+	Get-ChildItem CERT:LocalMachine/My | 
+		? { $certs -contains $_.Thumbprint }|
+		Select thumbPrint, FriendlyName, NotBefore, NotAfter, Issuer, DnsNameList, Subject
+]]*/*]]
+
+[LocalUser]
+CimCollect=No
+Name=Name
+s=[[
+	Import-Module Microsoft.Powershell.LocalAccounts
+	Get-LocalUser |
+	Select Name, FullName, Description, LastLogon, SID, AccountExpires, Enabled, PasswordLastSet, PrincipalSource
+]]
+
+[LocalGroup]
+CimCollect=No
+Name=Name
+s=[[...[[
+	Import-Module Microsoft.Powershell.LocalAccounts
+	Get-LocalGroup |Select Name, Description, SID, PrincipalSource 
+]]...]]
+
+[ScheduledTasks]
+Name=TaskName
+s=[[---[[
+Get-ScheduledTask " *" |
+    Select TaskName, TaskPath, State, Principal, Actions, Triggers, User, ExeLine, Parameters, Start, Days, Repetition|
+        ForEach-Object -Process {$_.User = ($_.Principal.Userid); 
+                                 $_.ExeLine = ($_.Actions.Execute); 
+                                 $_.Parameters = ($_.Actions.Arguments); 
+                                 $_.Start = $_.Triggers.StartBoundary;
+                                 $_.Days = $_.Triggers.DaysInterval;
+                                 $_.Repetition = $_.Triggers.Repetition.Interval;
+                                 $_} | 
+                                 
+    Select TaskName, TaskPath, State, User, ExeLine, Parameters, Triggers, Start, Days, Repetition 
+]]---]]
+
+[PIArchives]
+CimCollect=No
+Name=Path
+s=[[---[[
+$PIServername = $env:COMPUTERNAME
+#$PIServername
+# Get the PI server object, exit if there is an error retrieving the server
+$srv = Get-PIDataArchiveConnectionConfiguration -Name $PIServerName -ErrorAction Stop
+$connection = Connect-PIDataArchive -PIDataArchiveConnectionConfiguration $srv -ErrorAction Stop
+#	[Version] $v395 = "3.4.395"
+#if ($connection.ServerVersion -gt $v395)
+#{
+#   $archives = Get-PIArchiveFileInfo -Connection $connection -ArchiveSet 0 -ErrorAction Stop
+#}
+#else
+#{
+   $archives = Get-PIArchiveFileInfo -Connection $connection -ErrorAction Stop
+#}
+#$archives | fl *
+
+$archives | 
+    Select Path, StartTime, EndTime, LastModifiedTime, LastBackupTime, 
+           IsCorrupt, ArchiveSet, Version, Type, State, IsWritable, IsShiftable, Index, 
+           FreeprimaryRecords, FreeOverflowRecords, MaxPrimaryRecords, MaxOverflowRecords,
+           TotalEvents, PercentFull, AverageEventsPerRecordCount, AddRatePerHour, FileSizeGB |
+    ForEach-Object -Process {
+        $file = (dir $_.Path);
+        #$_.FileSizeGB = ([Int]($file.Length/1MB))/1KB;
+        $_.FileSizeGB = ([Math]::Round($file.Length/1GB, 3));
+        $_
+    }     
+]]---]]
+
+[Environment]
+Name=Name
+s=[[---[[
+
+$hash=[Environment]::GetEnvironmentVariables("Machine")
+$hash | foreach getEnumerator | 
+    Select-Object -Property @{Label="Mode"; Expression={"Machine"}},
+                            @{Label="Name"; Expression={$_.Key}},
+                            @{Label="Value"; Expression={$_.Value}}
+
+$hash=[Environment]::GetEnvironmentVariables("User")
+$hash | foreach getEnumerator | 
+    Select-Object -Property @{Label="Mode"; Expression={"User"}},
+                            @{Label="Name"; Expression={$_.Key}},
+                            @{Label="Value"; Expression={$_.Value}}
+
+$hash=[Environment]::GetEnvironmentVariables("Process")
+$hash | foreach getEnumerator | 
+    Select-Object -Property @{Label="Mode"; Expression={"Process"}},
+                            @{Label="Name"; Expression={$_.Key}},
+                            @{Label="Value"; Expression={$_.Value}}
+
+
+]]---]]
+
+[Hosts]
+Name=Address
+s=[[...[[
+Get-Content -Path "$env:windir\System32\Drivers\Etc\hosts." | 
+	ForEach {$_.Trim()} | 
+	Select-String -Pattern "^#.*$|^$" -NotMatch |
+	foreach{
+		$a,$b = $_ -replace '(^\s+|\s+$)','' -replace '\s+',' ' -split ' ', 2; 
+		Write-Output "hosts=$a=$b"}|
+		ConvertFrom-String -delimiter '=' -PropertyNames FileName,Address,Host
+]]...]]
+
+[Programs]
+; started from https://blogs.technet.microsoft.com/heyscriptingguy/2011/11/13/use-powershell-to-quickly-find-installed-software/
+Name=Key
+s=[[...[[
+
+ #Define the variable to hold the location of Currently Installed Programs
+ $UninstallKey="SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall" 
+ $regviews = {[Microsoft.Win32.RegistryView]::Registry32, [Microsoft.Win32.RegistryView]::Registry64}
+ $array = @()
+ #Create an instance of the Registry Object and open the HKLM base key
+ foreach ($view in $regviews){
+    $reg=[microsoft.win32.registrykey]::OpenBaseKey('LocalMachine',[Microsoft.Win32.RegistryView]::Registry32)
+    #Drill down into the Uninstall key using the OpenSubKey Method
+    $regkey=$reg.OpenSubKey($UninstallKey) 
+    #Retrieve an array of string that contain all the subkey names
+    $subkeys=$regkey.GetSubKeyNames() 
+    #Open each Subkey and use GetValue Method to return the required values for each
+    foreach($key in $subkeys){
+        $thisKey=$UninstallKey+"\\"+$key 
+        $tSK=$reg.OpenSubKey($thisKey) 
+        $obj = New-Object PSObject
+        $obj | Add-Member -MemberType NoteProperty -Name "Key" -Value $key
+        $obj | Add-Member -MemberType NoteProperty -Name "DisplayName" -Value $($tSK.GetValue("DisplayName"))
+        $obj | Add-Member -MemberType NoteProperty -Name "DisplayVersion" -Value $($tSK.GetValue("DisplayVersion"))
+        $obj | Add-Member -MemberType NoteProperty -Name "Version" -Value $($tSK.GetValue("Version"))
+        $obj | Add-Member -MemberType NoteProperty -Name "Publisher" -Value $($tSK.GetValue("Publisher"))
+        $obj | Add-Member -MemberType NoteProperty -Name "InstallLocation" -Value $($tSK.GetValue("InstallLocation"))
+        $obj | Add-Member -MemberType NoteProperty -Name "UninstallString" -Value $($tSK.GetValue("UninstallString"))
+        $obj | Add-Member -MemberType NoteProperty -Name "InstallSource" -Value $($tSK.GetValue("InstallSource"))
+        $obj | Add-Member -MemberType NoteProperty -Name "InstallDate" -Value $($tSK.GetValue("InstallDate"))
+        $obj | Add-Member -MemberType NoteProperty -Name "Comments" -Value $($tSK.GetValue("Commments"))
+        $obj | Add-Member -MemberType NoteProperty -Name "SystemComponent" -Value $($tSK.GetValue("SystemComponent"))
+        $obj | Add-Member -MemberType NoteProperty -Name "Language" -Value $($tSK.GetValue("Language"))
+        $obj | Add-Member -MemberType NoteProperty -Name "NoModify" -Value $($tSK.GetValue("NoModify"))
+        $obj | Add-Member -MemberType NoteProperty -Name "NoRepair" -Value $($tSK.GetValue("NoRepair"))
+        $obj | Add-Member -MemberType NoteProperty -Name "ReleaseTrain" -Value $($tSK.GetValue("ReleaseTrain"))
+        $obj | Add-Member -MemberType NoteProperty -Name "User" -Value $($tSK.GetValue("User"))
+        $obj | Add-Member -MemberType NoteProperty -Name "WindowsInstaller" -Value $($tSK.GetValue("WindowsInstaller"))
+        $array += $obj
+    } 
+}
+$array | 
+	select Key, DisplayName, DisplayVersion, Version, Publisher, 
+            InstallLocation, UninstallString, InstallSource, InstallDate, Comments,
+            SystemComponent, Language, NoModify, NoRepair, ReleaseTrain, User, Windowsinstaller
+
+
+
+]]...]]
