@@ -12,5 +12,8 @@
     <Setting Name="schema" Type="System.String" Scope="Application">
       <Value Profile="(Default)">dbo</Value>
     </Setting>
+    <Setting Name="TablePrefix" Type="System.String" Scope="Application">
+      <Value Profile="(Default)">CIM_</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

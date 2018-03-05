@@ -42,5 +42,14 @@ namespace CIMSave.Properties {
                 return ((string)(this["schema"]));
             }
         }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("CIM_")]
+        public string TablePrefix {
+            get {
+                return ((string)(this["TablePrefix"]));
+            }
+        }
     }
 }

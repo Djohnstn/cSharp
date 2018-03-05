@@ -17,10 +17,11 @@ namespace CIMSave
             var settings = new Properties.Settings();
             var connectionString = settings.database;
             var schema = settings.schema;
+            var tablePrefix = settings.TablePrefix;
 
             string inputfolder = "";
 
-            const string baseMask = "CIM*_*.Json*";
+            const string baseMask = "*_*.Json.gz";
             string mask = baseMask;
             foreach (var arg in args)
             {
@@ -36,10 +37,10 @@ namespace CIMSave
             }
 
 
-            Console.WriteLine($"[{connectionString}].[{schema}]");
+            Console.WriteLine($"[{connectionString}].[{schema}].[{tablePrefix}...]");
 
             var f = new FindFiles() { SqlConnectionString = connectionString };
-            f.AllJson(inputfolder, mask, schema);
+            f.AllJson(inputfolder, mask, schema, tablePrefix);
             //StringCompressDecompress();
         }
 

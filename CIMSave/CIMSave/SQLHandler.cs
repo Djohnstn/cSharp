@@ -15,10 +15,8 @@ namespace CIMSave
     {
         public static bool IsAlphaNum(this string str)
         {
-            if (string.IsNullOrEmpty(str))
-                return false;
-
-            return (str.ToCharArray().All(c => Char.IsLetter(c) || Char.IsNumber(c) || ("_-".IndexOf(c)>0)));
+            if (string.IsNullOrEmpty(str)) return false;
+            return (str.ToCharArray().All(c => Char.IsLetter(c) || Char.IsNumber(c) || ("_-".IndexOf(c) > -1)));
         }
     }
 
@@ -53,7 +51,7 @@ namespace CIMSave
     {
 
         public string ConnectionString { get; set; }
-        public int MaxStringLength { get; } = 2000;
+        public static int MaxStringLength { get; } = 2000;
         private string lastSchema;
         private string lastTable;
         private bool lastTableExists = false;
@@ -408,7 +406,7 @@ namespace CIMSave
                     (
 	                    [Id] INT NOT NULL IDENTITY (1, 1) CONSTRAINT PK_{schema}_{tableName}_ID  PRIMARY KEY,
 	                    [ServerId] int not null,
-	                    [Name] nvarchar(32) not null
+	                    [Name] nvarchar({nameLength}) not null
                     ";
                 string sql2 = $@"
                     CREATE INDEX [IX_{tableName}_ServerID_Name] ON [dbo].[{tableName}] ([ServerId], [Name]);

@@ -28,13 +28,14 @@ namespace CIMSave
     class FindFiles
     {
         public string SqlConnectionString { get; set; }
-        
+        public string TablePrefix { get; set; }
+
         public int Breakspot { get; set; } = 0;
 
         // don't want to touch the datatable rows
         //private const string checkHashColumn = "_rt_CheckHash_sha256_b64_";
         
-        public void AllJson(string filePath, string fileMask, string databaseSchema)
+        public void AllJson(string filePath, string fileMask, string databaseSchema, string tablePrefix)
         {
             if (string.IsNullOrWhiteSpace(filePath))
             {
@@ -51,11 +52,17 @@ namespace CIMSave
                 throw new ArgumentException("message", nameof(databaseSchema));
             }
 
+            if (string.IsNullOrWhiteSpace(tablePrefix))
+            {
+                throw new ArgumentException("message", nameof(tablePrefix));
+            }
+
             int files = 0;
             //int collections = 0;
             var server = Environment.MachineName;
+            TablePrefix = tablePrefix;
             var sw = new Stopwatch();
-            Console.WriteLine($"{LogTime()} Processing {filePath} {fileMask} files.");
+            Console.WriteLine($"{LogTime()} Processing {filePath}\\{fileMask} files.");
             sw.Start();
             foreach (var filename in System.IO.Directory.EnumerateFiles(filePath, fileMask))
             {
@@ -102,7 +109,7 @@ namespace CIMSave
             var server = fullPartsList.Server;
             var serverId = sQLHandler.ServerID(server);
             //var schema = "dbo";
-            var dtName = fullPartsList.Set;
+            var dtName = TablePrefix + fullPartsList.Set;
             var fileDt = AddColumnsToDataTable(dtName, tableColumns);
             var tablebOK = PrepareOrUpdateTable(sQLHandler, schema, dtName, tableColumns);
             Breakspot = 0;
@@ -341,7 +348,7 @@ namespace CIMSave
                 }
                 else
                 {
-                    foo = partValue;
+                    foo = partValue.Left(SQLHandler.MaxStringLength);
                 }
                 myRow[partName] = foo;
 
@@ -463,7 +470,7 @@ namespace CIMSave
                             Console.WriteLine(msg);
                         }
                     }
-                    if ((dbColLength < colLength) && (dbColLength < sQLHandler.MaxStringLength))
+                    if ((dbColLength < colLength) && (dbColLength < SQLHandler.MaxStringLength))
                     {
                         var result = sQLHandler.AlterColumn(schema, tableName, colName, ct, colLength);
                         if (result)
