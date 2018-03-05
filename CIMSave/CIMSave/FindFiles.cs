@@ -270,7 +270,7 @@ namespace CIMSave
                     }
                 }
                 var s = sb.ToString();
-                var hash = sha256(s);
+                var hash = Sha256(s);
                 //int index = dt.Rows.IndexOf(row);
                 hashList.Add(row.Field<int>("id"), hash);
                 //row[checkHashColumn] = hash;
@@ -717,7 +717,7 @@ namespace CIMSave
         }
 
         // https://stackoverflow.com/questions/12416249/hashing-a-string-with-sha256
-        static string sha256(string randomString)
+        static string Sha256(string randomString)
         {
             var crypt = new System.Security.Cryptography.SHA256Managed();
             var hash = new System.Text.StringBuilder();
