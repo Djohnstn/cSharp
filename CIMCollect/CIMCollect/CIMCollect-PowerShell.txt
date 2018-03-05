@@ -223,3 +223,171 @@ $array |
 
 
 ]]...]]
+
+[ADInformation]
+; select server name and OU path and OSName and last updated date from the AD
+; for all servers matching the first letters of the server name
+; eg server1o, server1, server1n
+
+[tcpip]
+; select server name and dns addresses
+; for all servers matching the first letters of the server name
+; eg server1o, server1, server1n, pingability
+
+
+[files]
+; collect pipc.ini, 32 & 64
+; collect pilogin.ini, 32 & 64
+
+
+[piarchives]
+; collect pi archives and status, name, start/end, type, etc
+
+
+[shares]
+; collect share info - might be in other program, if we keep it
+
+
+[LocalGroupMemberships]
+; collect groupname, membertype, membername, memberdomain
+
+
+[PiInterfaces]
+; pi interfaces - no idea how to collect this
+; pitopi, local, connections, remote server id, interface id, point source?, interface type
+; from network manager statistics
+; from MDB
+; batchfl, ufl
+
+[PIInterfaceServers]
+; disk space of interface nodes?
+
+
+[SQLServerDatabases]
+; database names
+; names, dates, hash, scripts:
+; tables, views
+; record counts
+; synonyms
+; columns, names, types, nullable, length
+
+; stored procedures, names, dates
+; parameters, types, lengths
+
+; sql jobs, schedules, status
+
+[patch status]
+; patches installed?
+; reboot window?
+
+[computer account group memberships]
+; group names, sids for this computer
+
+[networkinterfaces]
+; intercaes, MACs, protocols, ip addresses, routing tables
+
+[folderinventory]
+; folder name, path, file counts
+; file info, name, version, dates, sha-hash
+; newest and oldest log or other files
+; count of files by file type
+
+[timezone]
+; server timezone info
+
+[serveradministratorsgroups]
+; probably above already
+
+[dcomcomponents]
+; installed dcom components, name, account mode, service accounts, exe/dll paths, active/inactive
+
+[selected registry values]
+; keys and values and types
+; pims 64/32
+; hklm\sw\e c c\pims
+; pisystem values
+
+; pi kst
+
+[uc4global]
+; c:\uc4global, c:\automic, c:\uc4
+
+[odbc]
+; 64/32
+; odbc names, drivers, conx info
+
+[pitimezone]
+; c:\pi\dat\localhost.tz file checksum and time zone info
+
+[piace1]
+; contexts, exe name, schedule, enabled
+
+[piace2]
+; contexts, dll name, schedule, enabled
+
+[iismappings]
+; iis pools
+; iis applications
+; iis folders
+
+[piversion]
+; pi services versions
+; pidiag -ver
+
+; pipc.ini
+
+[settings]
+; inventory of programdata\eastman\settings.xml files and *.config
+
+
+[smtp]
+; smtp service info from iis
+; delivery,etc
+; domains
+
+[eventlog]
+; event log name, message counts per type per hour
+; startup messages?
+
+[pipointcount]
+; snapshot points
+; base points
+
+[piserverid]
+; server id
+
+[sqlaccounts]
+; logins, mappings
+
+[pisecuritysettings]
+; security policy setttings
+
+[pilicense]
+; license info
+
+[folderaccess]
+; acls in folders
+; ace ids in folders
+
+[sytags]
+; all sy:*.sv tags, names, types, and values
+
+[pialiases]
+; pi server alias and values
+
+[secpol]
+; policy names and values for selected values
+; log on as batch, service, rights level
+
+[SPN]
+; spns for server names, for all accounts on services and iis pools
+; spns for sql server, piserver, http, file, ...
+
+; up to page 45
+
+[ad services accounts]
+; trusted for delegation 
+; delegation to, kerberos, ..
+
+
+; up to page 55;
