@@ -25,6 +25,19 @@ namespace CIMSave
                    );
         }
     }
+    public static class ByteExtensions
+    {
+        public static string Left(this byte[] value, int maxLength)
+        {
+            if (value.Length == 0) return String.Empty;
+            maxLength = Math.Abs(maxLength);
+            var result = BitConverter.ToString(value).Replace("-", "");
+            return (result.Length <= maxLength
+                   ? result
+                   : result.Substring(0, maxLength)
+                   );
+        }
+    }
     class FindFiles
     {
         public string SqlConnectionString { get; set; }
@@ -134,8 +147,8 @@ namespace CIMSave
         {
 
             // checksum columns for each row?
-            Dictionary<int, string> sqlHash = hashDT(sQLDt);
-            Dictionary<int, string> fileHash = hashDT(fileDt);
+            Dictionary<int, byte[]> sqlHash = hashDT(sQLDt);
+            Dictionary<int, byte[]> fileHash = hashDT(fileDt);
             // do primary keys exist? maybe not a good idea.
             //sQLDt.PrimaryKey = new DataColumn[] { sQLDt.Columns["Name"], sQLDt.Columns[checkHashColumn] };
             //fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["Name"], fileDt.Columns[checkHashColumn] };
@@ -165,14 +178,21 @@ namespace CIMSave
             //throw new NotImplementedException();
         }
 
-        private string hashValue(Dictionary<int, string> hashList, int key)
+        private bool hashEqual(Dictionary<int, byte[]> hashList, int key, byte[] otherHash)
         {
-            bool found = hashList.TryGetValue(key, out string hash);
-            return (found)? hash : String.Empty;
+            bool found = hashList.TryGetValue(key, out byte[] hash);
+            if (!found) return false;
+            return ByteArraysEqual(hash , otherHash);
         }
 
-        private bool deleteDTinDT(DataTable dtWithExtra, Dictionary<int, string> hashExtra,
-            DataTable dtWithBase, Dictionary<int, string> hashBase)
+        private byte[] hashValue(Dictionary<int, byte[]> hashList, int key)
+        {
+            bool found = hashList.TryGetValue(key, out byte[] hash);
+            return (found)? hash : new byte[] { };
+        }
+
+        private bool deleteDTinDT(DataTable dtWithExtra, Dictionary<int, byte[]> hashExtra,
+            DataTable dtWithBase, Dictionary<int, byte[]> hashBase)
         {
             bool status = true;
             var basename = dtWithBase.TableName;
@@ -184,7 +204,7 @@ namespace CIMSave
                 var xsum = hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
                 var fdr = (from myRow in dtWithExtra.AsEnumerable()
                            where myRow.Field<string>("Name") == xname &&
-                                   hashValue(hashExtra, myRow.Field<int>("id")) == xsum
+                                  hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
                                    //myRow.Field<string>(checkHashColumn) == xsum
                            select myRow)
                             .FirstOrDefault<DataRow>();
@@ -198,8 +218,8 @@ namespace CIMSave
             return status;
         }
 
-        private bool deleteDTNotInDT(DataTable dtWithExtra, Dictionary<int, string> hashExtra,
-                                     DataTable dtWithBase, Dictionary<int, string> hashBase)
+        private bool deleteDTNotInDT(DataTable dtWithExtra, Dictionary<int, byte[]> hashExtra,
+                                     DataTable dtWithBase, Dictionary<int, byte[]> hashBase)
         {
             var basename = dtWithBase.TableName;
             bool status = true;
@@ -215,7 +235,8 @@ namespace CIMSave
                 // by intent, this will keep one and only one match
                 var xdr = (from myRow in dtxe // dtWithExtra.AsEnumerable()
                            where myRow.Field<string>("Name") == xname &&
-                                 hashValue(hashExtra, myRow.Field<int>("id")) == xsum
+                                 hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
+                                 //hashValue(hashExtra, myRow.Field<int>("id")) == xsum
                                  //myRow.Field<string>(checkHashColumn) == xsum
                            select myRow)
                             .FirstOrDefault<DataRow>();
@@ -248,10 +269,10 @@ namespace CIMSave
         }
 
 
-        private Dictionary<int, string> hashDT(DataTable dt)
+        private Dictionary<int, byte[]> hashDT(DataTable dt)
         {   //TODO: do not hash Server, ID, or ServerID columns;
             //dt.Columns.Add(checkHashColumn, typeof(string));
-            var hashList = new Dictionary<int, string>(); // HashList<int, string>
+            var hashList = new Dictionary<int, byte[]>(); // HashList<int, string>
             var column = dt.Columns;
             foreach (DataRow row in dt.Rows)
             {
@@ -270,7 +291,7 @@ namespace CIMSave
                     }
                 }
                 var s = sb.ToString();
-                var hash = Sha256(s);
+                var hash = HashBytesOfString(s);
                 //int index = dt.Rows.IndexOf(row);
                 hashList.Add(row.Field<int>("id"), hash);
                 //row[checkHashColumn] = hash;
@@ -717,7 +738,7 @@ namespace CIMSave
         }
 
         // https://stackoverflow.com/questions/12416249/hashing-a-string-with-sha256
-        static string Sha256(string randomString)
+        static string HashStringOfString(string randomString)
         {
             var crypt = new System.Security.Cryptography.SHA256Managed();
             var hash = new System.Text.StringBuilder();
@@ -727,6 +748,66 @@ namespace CIMSave
             //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
             //return hash.ToString();
         }
+
+        static byte[] HashBytesOfString(string randomString)
+        {
+            var crypt = new System.Security.Cryptography.SHA256Managed();
+            //var hash = new System.Text.StringBuilder();
+            //byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+            // johnston change
+            return crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+            //return Convert.ToBase64String(crypto);
+            //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
+            //return hash.ToString();
+        }
+
+        // https://stackoverflow.com/questions/1389570/c-sharp-byte-array-comparison
+        // jon skeet suggestion, further work by Guffa, and 8byte suggestion by Joe
+
+        public unsafe bool ByteArraysEqual(byte[] b1, byte[] b2)
+        {
+            if (b1 == b2) return true;
+            if (b1 == null || b2 == null) return false;
+            if (b1.Length != b2.Length) return false;
+            int len = b1.Length;
+            fixed (byte* p1 = b1, p2 = b2)
+            {
+                long* i1 = (long*)p1;
+                long* i2 = (long*)p2;
+                while (len >= sizeof(long))
+                {
+                    if (*i1 != *i2) return false;
+                    i1++;
+                    i2++;
+                    len -= sizeof(long);
+                }
+                byte* c1 = (byte*)i1;
+                byte* c2 = (byte*)i2;
+                while (len > 0)
+                {
+                    if (*c1 != *c2) return false;
+                    c1++;
+                    c2++;
+                    len--;
+                }
+            }
+            return true;
+        }
+
+
+        // https://stackoverflow.com/questions/43289/comparing-two-byte-arrays-in-net
+        // dotNet 4.7
+        // byte[] is implicitly convertible to ReadOnlySpan<byte>
+        //static bool ByteArrayCompare(ReadOnlySpan<byte> a1, ReadOnlySpan<byte> a2)
+        //{
+        //    return a1.SequenceEqual(a2);
+        //}
+
+        //static void TestSpan()
+        //{
+        //    var arr = new byte[10];
+        //    Span<byte> bytes = arr; // Implicit cast from T[] to Span<T> 
+        //}
 
         // 64 bit hash
         // https://stackoverflow.com/questions/8820399/c-sharp-4-0-how-to-get-64-bit-hash-code-of-given-string
