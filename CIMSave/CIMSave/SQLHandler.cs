@@ -194,7 +194,9 @@ namespace CIMSave
 
         public int ServerID(string serverName)
         {
-            return DoQuery<int>($"Select id from [dbo].[Server] Where NodeName = '{serverName}'", -1);
+            var p = new List<SqlParameter>();
+            p.Add(new SqlParameter("@server", serverName));
+            return DoQuery<int>("Select id from [dbo].[Server] Where NodeName = @server", -1, p);
         }
 
         public bool FillDT(DataTable dt, string schema, string tableName, string serverName)
@@ -299,6 +301,60 @@ namespace CIMSave
             return dr;
         }
 
+        private List<DataRow> DoQuery(string sqlQuery, List<SqlParameter> paramList)
+        {
+            List<DataRow> dr;
+            using (SqlConnection con = new SqlConnection(ConnectionString))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand(sqlQuery, con))
+                {
+                    foreach (var p in paramList)
+                    {
+                        command.Parameters.Add(p);
+                    }
+
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        //while (reader.Read())
+                        //{    //Console.WriteLine("{0} {1} {2}",
+                        //    //    reader.GetInt32(0), reader.GetString(1), reader.GetString(2)); }
+                        var dt = new DataTable();
+                        dt.Load(reader);
+                        dr = dt.AsEnumerable().ToList();
+                    }
+
+                }
+            }
+            return dr;
+        }
+
+
+        private T DoQuery<T>(string sqlQuery, T defaultValue, List<SqlParameter> paramList)
+        {
+            T result = defaultValue;
+            using (SqlConnection con = new SqlConnection(ConnectionString))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand(sqlQuery, con))
+                {
+                    foreach(var p in paramList)
+                    {
+                        command.Parameters.Add(p);
+                    }
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result = reader.GetFieldValue<T>(0);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+
         private T DoQuery<T>(string sqlQuery, T defaultValue)
         {
             T result = defaultValue;
@@ -310,9 +366,6 @@ namespace CIMSave
                 {
                     while (reader.Read())
                     {
-                        //Console.WriteLine("{0} {1} {2}",
-                        //    reader.GetInt32(0), reader.GetString(1), reader.GetString(2));
-                        //result = (T)Convert.ChangeType(reader.GetFieldValue<T>(0), typeof(T));
                         result = reader.GetFieldValue<T>(0);
                     }
 
