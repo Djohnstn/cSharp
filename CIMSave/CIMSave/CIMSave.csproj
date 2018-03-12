@@ -64,6 +64,7 @@
     <Compile Include="DTJson.cs" />
     <Compile Include="FindFiles.cs" />
     <Compile Include="GZfileIO.cs" />
+    <Compile Include="HashSig.cs" />
     <Compile Include="InfoParts.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -207,10 +207,26 @@ namespace CIMSave
                 con.Open();
                 using (SqlCommand command = new SqlCommand(sqlQuery, con))
                 using (SqlDataAdapter da = new SqlDataAdapter(command))
+                using (DataSet ds = new DataSet() { EnforceConstraints = false }) 
                 {
+                    ds.Tables.Add(dt);
                     da.Fill(dt);
+                    //ds.EnforceConstraints = true;
+                    ds.Tables.Remove(dt);
                 }
                 //int updated = dt.Select(null, null, DataViewRowState.ModifiedCurrent).Length;
+            }
+            foreach(DataRow row in dt.Rows)
+            {
+                if (row.HasErrors)
+                {
+                    var rowId = row.Field<int>(1);
+                    var colsinError = row.GetColumnsInError();
+                    foreach (var col in colsinError)
+                    {
+                        Console.WriteLine($"Error in {schema}.{tableName} row {rowId} {col.ColumnName}");
+                    }
+                }
             }
             return true;
         }
@@ -461,9 +477,7 @@ namespace CIMSave
 	                    [ServerId] int not null,
 	                    [Name] nvarchar({nameLength}) not null
                     ";
-                string sql2 = $@"
-                    CREATE INDEX [IX_{tableName}_ServerID_Name] ON [dbo].[{tableName}] ([ServerId], [Name]);
-                    ";
+                string sql2 = $@"CREATE INDEX [IX_{tableName}_ServerID_Name] ON [dbo].[{tableName}] ([ServerId], [Name]);";
                 newTableName = tableName;
                 newSchemaName = schema;
                 newTableCommand = sql1;
@@ -617,7 +631,7 @@ namespace CIMSave
         {
             bool success = false;
             if (!columnName.IsAlphaNum()) throw new ArgumentException($"invalid schema name: {columnName}");
-            if (newTableParameters == null) throw new ArgumentException($"PrepareColumn before PrepareTble: {newTableName}");
+            if (newTableParameters == null) throw new ArgumentException($"PrepareColumn before PrepareTable: {newTableName}");
             if (ColumnLength(newSchemaName, newTableName, columnName) != 0)
             {
                 //throw new ArgumentException($"Column {columnName} already exists");

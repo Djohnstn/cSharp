@@ -25,6 +25,7 @@ namespace CIMSave
                    );
         }
     }
+
     public static class ByteExtensions
     {
         public static string Left(this byte[] value, int maxLength)
@@ -38,6 +39,8 @@ namespace CIMSave
                    );
         }
     }
+
+
     class FindFiles
     {
         public string SqlConnectionString { get; set; }
@@ -147,12 +150,14 @@ namespace CIMSave
         {
 
             // checksum columns for each row?
-            Dictionary<int, byte[]> sqlHash = hashDT(sQLDt);
-            Dictionary<int, byte[]> fileHash = hashDT(fileDt);
+            HashTable sqlHash = HashDT(sQLDt);
+            HashTable fileHash = HashDT(fileDt);
             // do primary keys exist? maybe not a good idea.
             //sQLDt.PrimaryKey = new DataColumn[] { sQLDt.Columns["Name"], sQLDt.Columns[checkHashColumn] };
             //fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["Name"], fileDt.Columns[checkHashColumn] };
-            
+            sQLDt.PrimaryKey = new DataColumn[] { sQLDt.Columns["id"]};
+            fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["id"]};
+
             this.Breakspot = 0;
 
             // dump the lists
@@ -178,90 +183,123 @@ namespace CIMSave
             //throw new NotImplementedException();
         }
 
-        private bool hashEqual(Dictionary<int, byte[]> hashList, int key, byte[] otherHash)
-        {
-            bool found = hashList.TryGetValue(key, out byte[] hash);
-            if (!found) return false;
-            return ByteArraysEqual(hash , otherHash);
-        }
+        //private bool hashEqual(Dictionary<int, byte[]> hashList, int key, byte[] otherHash)
+        //{
+        //    bool found = hashList.TryGetValue(key, out byte[] hash);
+        //    if (!found) return false;
+        //    return ByteArraysEqual(hash , otherHash);
+        //}
 
-        private byte[] hashValue(Dictionary<int, byte[]> hashList, int key)
-        {
-            bool found = hashList.TryGetValue(key, out byte[] hash);
-            return (found)? hash : new byte[] { };
-        }
+        //private byte[] hashValue(Dictionary<int, byte[]> hashList, int key)
+        //{
+        //    bool found = hashList.TryGetValue(key, out byte[] hash);
+        //    return (found)? hash : new byte[] { };
+        //}
 
-        private bool deleteDTinDT(DataTable dtWithExtra, Dictionary<int, byte[]> hashExtra,
-            DataTable dtWithBase, Dictionary<int, byte[]> hashBase)
+        private bool deleteDTinDT(DataTable dtWithExtra, HashTable hashExtra,
+            DataTable dtWithBase, HashTable hashBase)
         {
             bool status = true;
             var basename = dtWithBase.TableName;
             var tempDt = dtWithBase.Select(null, null, DataViewRowState.CurrentRows);
-            foreach (DataRow sdr in tempDt)
+            foreach (var xSum in hashBase.Hashs())
             {
-                var xname = sdr.Field<string>("Name");
-                var xid = sdr.Field<int>("id");
-                var xsum = hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
-                var fdr = (from myRow in dtWithExtra.AsEnumerable()
-                           where myRow.Field<string>("Name") == xname &&
-                                  hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
-                                   //myRow.Field<string>(checkHashColumn) == xsum
-                           select myRow)
-                            .FirstOrDefault<DataRow>();
-                if (fdr != null)
+                //int xId = xObj.Key;// (Dictionary<int, HashSig>)xObj).Key();
+                //var xsum = xObj;//.Value; // hashBase.HashValue(xId);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
+                //    foreach (int xId in hashBase)
+                //{
+                //    var xsum = hashBase.HashValue(xId);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
+                if (hashExtra.TryGetID(xSum, out int idExtra))
                 {
-                    //var id = fdr.Field<int>("id");
-                    //Console.WriteLine($"Deleting row {xid}: {xname} hash {xsum.Left(8)} because it is in database {basename} table.");
-                    fdr.Delete();
+                    (from myRow in dtWithExtra.AsEnumerable()
+                               where myRow.Field<int>("id") == idExtra // &&
+                               select myRow)
+                                .FirstOrDefault<DataRow>()?.Delete();
                 }
             }
+            //foreach (DataRow sdr in tempDt)
+            //{
+            //    //var xname = sdr.Field<string>("Name");
+            //    var xid = sdr.Field<int>("id");
+            //    var xsum = hashBase.HashValue(xid);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
+            //    if (hashExtra.Exists(xsum))
+            //    {
+            //        var idExtra = hashExtra.RecordID(xsum);
+            //        //var fdr = (from myRow in dtWithExtra.AsEnumerable()
+            //        //           where myRow.Field<string>("Name") == xname &&
+            //        //                  hashExtra.HashValue(myRow.Field<int>("id")).Equals( xsum)
+            //        //                  //hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
+            //        //                   //myRow.Field<string>(checkHashColumn) == xsum
+            //        //           select myRow)
+            //        //            .FirstOrDefault<DataRow>();
+            //        var fdr = (from myRow in dtWithExtra.AsEnumerable()
+            //                   where myRow.Field<int>("id") == idExtra // &&
+            //                                                           //     hashExtra.HashValue(myRow.Field<int>("id")).Equals(xsum)
+            //                                                           //hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
+            //                                                           //myRow.Field<string>(checkHashColumn) == xsum
+            //                   select myRow)
+            //                    .FirstOrDefault<DataRow>();
+            //        if (fdr != null)
+            //        {
+            //            //var id = fdr.Field<int>("id");
+            //            //Console.WriteLine($"Deleting row {xid}: {xname} hash {xsum.Left(8)} because it is in database {basename} table.");
+            //            fdr.Delete();
+            //        }
+            //    }
+            //}
             return status;
         }
 
-        private bool deleteDTNotInDT(DataTable dtWithExtra, Dictionary<int, byte[]> hashExtra,
-                                     DataTable dtWithBase, Dictionary<int, byte[]> hashBase)
+        private bool deleteDTNotInDT(DataTable dtWithExtra, HashTable hashExtra,
+                                     DataTable dtWithBase, HashTable hashBase)
         {
             var basename = dtWithBase.TableName;
             bool status = true;
             //List<DataRow> dr = dtWithExtra.AsEnumerable().ToList<DataRow>();
             var toKeep = new SortedSet<int>();
-            var dtxe = dtWithExtra.AsEnumerable();
-            foreach (DataRow sdr in dtWithBase.Rows)
+
+            foreach (var xSum in hashBase.Hashs())
             {
-                var xname = sdr.Field<string>("Name");
-                var xid = sdr.Field<int>("id");
-                //var xsum = sdr.Field<string>(checkHashColumn);
-                var xsum = hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
-                // by intent, this will keep one and only one match
-                var xdr = (from myRow in dtxe // dtWithExtra.AsEnumerable()
-                           where myRow.Field<string>("Name") == xname &&
-                                 hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
-                                 //hashValue(hashExtra, myRow.Field<int>("id")) == xsum
-                                 //myRow.Field<string>(checkHashColumn) == xsum
-                           select myRow)
-                            .FirstOrDefault<DataRow>();
-                if (xdr != null)
+                if (hashExtra.TryGetID(xSum, out int idExtra))
                 {
-                    var id = (int)xdr["id"];
-                    //Console.WriteLine($"Keeping  row {id}: {xname} hash {xsum.Left(8)} because it is in file {basename}.json.");
-                    toKeep.Add((int)xdr["id"]);
+                    toKeep.Add(idExtra);
                 }
             }
 
+
+            //var dtxe = dtWithExtra.AsEnumerable();
+            //foreach (DataRow sdr in dtWithBase.Rows)
+            //{
+            //    var xname = sdr.Field<string>("Name");
+            //    var xid = sdr.Field<int>("id");
+            //    //var xsum = sdr.Field<string>(checkHashColumn);
+            //    var xsum = hashBase.HashValue(xid); // hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
+            //    // by intent, this will keep one and only one match
+            //    var xdr = (from myRow in dtxe // dtWithExtra.AsEnumerable()
+            //               where myRow.Field<string>("Name") == xname &&
+            //                     hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
+            //                     //hashValue(hashExtra, myRow.Field<int>("id")) == xsum
+            //                     //myRow.Field<string>(checkHashColumn) == xsum
+            //               select myRow)
+            //                .FirstOrDefault<DataRow>();
+            //    if (xdr != null)
+            //    {
+            //        var id = (int)xdr["id"];
+            //        //Console.WriteLine($"Keeping  row {id}: {xname} hash {xsum.Left(8)} because it is in file {basename}.json.");
+            //        toKeep.Add(id); // (int)xdr["id"]);
+            //    }
+            //}
+
             foreach (DataRow xdr in dtWithExtra.Rows)
             {
-                var id = (int)xdr["id"];
-                if (toKeep.Contains(id))
-                {
-                    // keep this
-                }
-                else
-                {
+                var id = xdr.Field<int>("id");
+                if (!toKeep.Contains(id))
+                {   // get rid of unknow record ids
                     var xname = xdr.Field<string>("Name");
                     //var xid = xdr.Field<int>("id");
-                    var xsum = hashValue(hashExtra, id); //sdr.Field<string>(checkHashColumn);
+                    var xsumStr = hashExtra.HashValue(id).ToString().Left(8); // hashValue(hashExtra, id); //sdr.Field<string>(checkHashColumn);
                     //var xsum = xdr.Field<string>(checkHashColumn);
-                    Console.WriteLine($"Deleting row {id}: {xname} hash {xsum.Left(8)} because it is not in file {basename}.json.");
+                    Console.WriteLine($"Deleting row {id}: {xname} hash {xsumStr} because it is not in file {basename}.json.");
                     xdr.Delete();
                 }
             }
@@ -269,34 +307,15 @@ namespace CIMSave
         }
 
 
-        private Dictionary<int, byte[]> hashDT(DataTable dt)
+        HashTable HashDT(DataTable dt)
         {   //TODO: do not hash Server, ID, or ServerID columns;
             //dt.Columns.Add(checkHashColumn, typeof(string));
-            var hashList = new Dictionary<int, byte[]>(); // HashList<int, string>
+            var hashList = new HashTable() ; //Dictionary<int, byte[]>(); // HashList<int, string>
             var column = dt.Columns;
             foreach (DataRow row in dt.Rows)
             {
-                var sb = new StringBuilder();
-                for (int xcol = 0; xcol < row.ItemArray.Length ; xcol++)
-                {
-                    var colName = column[xcol].ColumnName;
-                    if (colName == "id" || colName.StartsWith("_"))
-                    {   // skip added data columns
-                    }
-                    else
-                    {
-                        var colValue = row[xcol];
-                        if (colValue != null) sb.Append(colValue.ToString());
-                        sb.Append('\t');
-                    }
-                }
-                var s = sb.ToString();
-                var hash = HashBytesOfString(s);
-                //int index = dt.Rows.IndexOf(row);
-                hashList.Add(row.Field<int>("id"), hash);
-                //row[checkHashColumn] = hash;
+                hashList.Add(row);
             }
-            //dt.AcceptChanges(); // forget about the added column...
             return hashList;
         }
 
@@ -680,6 +699,11 @@ namespace CIMSave
                 {
                     len = 8;
                 }
+                else if (pType.Equals("Microsoft.PowerShell.Cmdletization.GeneratedTypes.ScheduledTask.StateEnum"))
+                {
+                    len = part.Value.Length;
+                    pType = "String";
+                }
                 else
                 {
                     throw new EvaluateException($"Unhandled Type: {pType}");
@@ -749,17 +773,17 @@ namespace CIMSave
             //return hash.ToString();
         }
 
-        static byte[] HashBytesOfString(string randomString)
-        {
-            var crypt = new System.Security.Cryptography.SHA256Managed();
-            //var hash = new System.Text.StringBuilder();
-            //byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-            // johnston change
-            return crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-            //return Convert.ToBase64String(crypto);
-            //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
-            //return hash.ToString();
-        }
+        //static byte[] HashBytesOfString(string randomString)
+        //{
+        //    var crypt = new System.Security.Cryptography.SHA256Managed();
+        //    //var hash = new System.Text.StringBuilder();
+        //    //byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        //    // johnston change
+        //    return crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        //    //return Convert.ToBase64String(crypto);
+        //    //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
+        //    //return hash.ToString();
+        //}
 
         // https://stackoverflow.com/questions/1389570/c-sharp-byte-array-comparison
         // jon skeet suggestion, further work by Guffa, and 8byte suggestion by Joe
