@@ -576,7 +576,10 @@ namespace CIMSave
                 }
                 else
                 {
-                    throw new EvaluateException($"Unhandled Type: {pType}");
+                    len = part.Value.Length;
+                    Console.WriteLine($"Unexpected Type on: {part.Identity}, Part: {pName}, Type: {pType} set to String. Length {len}");
+                    pType = "String";
+                    //throw new EvaluateException($"Unhandled Type: {pType}");
                 }
                 var found = tableColumns.TryGetValue(pName, out TableColumn tc);
                 if (found)
