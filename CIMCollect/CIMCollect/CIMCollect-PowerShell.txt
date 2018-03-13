@@ -91,7 +91,7 @@ s=[[...[[
 [ScheduledTasks]
 Name=TaskName
 s=[[---[[
-Get-ScheduledTask " *" |
+Get-ScheduledTask "*" |
     Select TaskName, TaskPath, State, Principal, Actions, Triggers, User, ExeLine, Parameters, Start, Days, Repetition|
         ForEach-Object -Process {$_.User = ($_.Principal.Userid); 
                                  $_.ExeLine = ($_.Actions.Execute); 

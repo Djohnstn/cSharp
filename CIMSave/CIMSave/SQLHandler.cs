@@ -49,7 +49,6 @@ namespace CIMSave
 
     class SQLHandler
     {
-
         public string ConnectionString { get; set; }
         public static int MaxStringLength { get; } = 2000;
         private string lastSchema;
@@ -145,10 +144,9 @@ namespace CIMSave
                 if (colName == "Server") colName = "ServerID";
                 if (!(colName.StartsWith("_")))
                 {
-                    sb.AppendLine($" {comma} {colName} ");
+                    sb.AppendLine($" {comma} [t].[{colName}] ");
                     if (comma.Length == 0) comma = ",";
                 }
-
             }
             sb.AppendLine($" FROM [{schema}].[{tableName}] t ");
             sb.AppendLine($" WHERE t.[ServerId] = {serverId} ");
@@ -190,7 +188,6 @@ namespace CIMSave
                 sbr.Clear();
             }
         }
-
 
         public int ServerID(string serverName)
         {
@@ -256,30 +253,9 @@ namespace CIMSave
 
                     //da.DeleteCommand = builder.GetDeleteCommand();
                     da.DeleteCommand = deleteCmd;
-                    //Console.WriteLine(da.DeleteCommand.CommandText);
-
-
-                    //da.UpdateCommand = builder.GetUpdateCommand();
-                    //Console.WriteLine(da.UpdateCommand.CommandText);
                     da.InsertCommand = builder.GetInsertCommand();
-                    //string insertCmd = da.InsertCommand.CommandText.Replace("[id],", "").Replace("@p1,", "");
-                    //da.InsertCommand.CommandText = insertCmd;
-                    //Console.WriteLine(da.InsertCommand.CommandText);
-                    //da.SelectCommand.CommandText = sqlQuery;
-                    // da.Update();
-                    //da.Fill(dtWork); // get results
-                    // delete deleted records
-                    //foreach (DataRow dr in dt.Select(null, null, DataViewRowState.Deleted))
-                    //{
-                    //    int id = dr.Field<int>("id", DataRowVersion.Original);
-                    //    Console.WriteLine($"SQL deleting [{schema}].[{tableName}] id = {id}");
-                    //}
                     int delete2 = (dt.Select(null, null, DataViewRowState.Deleted)).Length;
                     int deleted = da.Update(dt.Select(null, null, DataViewRowState.Deleted));
-                    // process updates? maybe not
-                    //int updated = da.Update(dt.Select(null, null, DataViewRowState.ModifiedCurrent));
-                    // process adds
-                    //da.
                     int adde2 = (dt.Select(null, null, DataViewRowState.Added)).Length;
                     int added = da.Update(dt.Select(null, null, DataViewRowState.Added));
                     //da.Update();
@@ -306,9 +282,6 @@ namespace CIMSave
                 using (SqlCommand command = new SqlCommand(sqlQuery, con))
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
-                    //while (reader.Read())
-                    //{    //Console.WriteLine("{0} {1} {2}",
-                    //    //    reader.GetInt32(0), reader.GetString(1), reader.GetString(2)); }
                     var dt = new DataTable();
                     dt.Load(reader);
                    dr = dt.AsEnumerable().ToList();
@@ -332,9 +305,6 @@ namespace CIMSave
 
                     using (SqlDataReader reader = command.ExecuteReader())
                     {
-                        //while (reader.Read())
-                        //{    //Console.WriteLine("{0} {1} {2}",
-                        //    //    reader.GetInt32(0), reader.GetString(1), reader.GetString(2)); }
                         var dt = new DataTable();
                         dt.Load(reader);
                         dr = dt.AsEnumerable().ToList();
@@ -413,42 +383,6 @@ namespace CIMSave
             return rows;
         }
 
-        //private class parmValue : IEnumerable<>
-        //{
-        //    string parm { get; set; }
-        //    string value { get; set; }
-        //    public parmValue()
-        //    {
-        //        parm = a;
-        //        value = b;
-        //    }
-        //    public parmValue(string a, string b)
-        //    {
-        //        parm = a;
-        //        value = b;
-        //    }
-        //    public void Add(string a, string b)
-        //    {
-        //        parm = a;
-        //        value = b;
-        //    }
-        //}
-        //var myparams = new List<parmValue>
-        //    {
-        //        new parmValue( "schema", "1" ),
-        //        new parmValue("table", "boo"),
-        //    };
-
-        //var xparams = new parmValue
-        //    {
-        //        { "schema", "1" }
-        //    };
-
-        //var myparams = new List<Tuple<string, string>>()
-        //{
-        //    Tuple.Create("schema", schema),
-        //    Tuple.Create("table", tableName)
-        //};
 
         private string newTableCommand = "";
         private StringBuilder newTableParameters = null;
@@ -631,11 +565,11 @@ namespace CIMSave
         {
             bool success = false;
             if (!columnName.IsAlphaNum()) throw new ArgumentException($"invalid schema name: {columnName}");
-            if (newTableParameters == null) throw new ArgumentException($"PrepareColumn before PrepareTable: {newTableName}");
-            if (ColumnLength(newSchemaName, newTableName, columnName) != 0)
+            if (newTableParameters != null) throw new ArgumentException($"AddColumn after PrepareTable: {newTableName}");
+            if (ColumnLength(schema, tableName, columnName) != 0)
             {
-                //throw new ArgumentException($"Column {columnName} already exists");
                 success = false;
+                throw new ArgumentException($"Column {columnName} already exists");
             }
             else
             {
@@ -699,40 +633,6 @@ namespace CIMSave
             return success;
         }
 
-
-        [Obsolete("Please use PrepareTable(..)...PrepareColumn(..)...CreateTale() instead",true)]
-        private bool CreateTable(string schema, string tableName)
-        {
-            bool success = false;
-
-            //if (!schema.IsAlphaNum()) throw new ArgumentException($"invalid schema name: {schema}");
-            //if (!tableName.IsAlphaNum()) throw new ArgumentException($"invalid table name: {tableName}");
-
-            //if (TableExists(schema, tableName))
-            //{
-            //    success = true;
-            //}
-            //else
-            //{
-            //    string sql1 = $@"Create Table [{schema}].[{tableName}]
-            //        (
-	           //         [Id] INT NOT NULL PRIMARY KEY,
-	           //         [ServerId] int not null ,
-	           //         [Name] nvarchar(32) not null
-            //        )";
-            //    string sql2 = $@"
-            //        CREATE INDEX [IX_{tableName}_ServerID_Name] ON [dbo].[{tableName}] ([ServerId], [Name])
-            //        ";
-            //    var result1 = DoCommand(sql1);
-            //    var result2 = DoCommand(sql2);
-            //    if (result1 != 0) success = true; 
-            //}
-            //newTableCommand = "";
-            //newTableParameters = null;
-            //firstParameter = true;
-            //newIndexCommand = "";
-            return success;
-        }
 
         public bool CreateTable()
         {

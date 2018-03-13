@@ -48,9 +48,6 @@ namespace CIMSave
 
         public int Breakspot { get; set; } = 0;
 
-        // don't want to touch the datatable rows
-        //private const string checkHashColumn = "_rt_CheckHash_sha256_b64_";
-        
         public void AllJson(string filePath, string fileMask, string databaseSchema, string tablePrefix)
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -74,7 +71,6 @@ namespace CIMSave
             }
 
             int files = 0;
-            //int collections = 0;
             var server = Environment.MachineName;
             TablePrefix = tablePrefix;
             var sw = new Stopwatch();
@@ -132,15 +128,11 @@ namespace CIMSave
 
             DataTable sqlDT = PrepareSQLDT(fileDt);
 
-
             var sqlDTLoaded = FillSqlDt(sQLHandler, sqlDT, schema, dtName, server);
 
             var dtLoaded = FillDataTable(fileDt, fullPartsList, serverId);
 
             var sqUpdateNeeded = CompareSQLDTtoFileDT(sqlDT, fileDt);
-
-            //DataTable dtUpdate = sqlDT.Copy();
-            //dtUpdate.Columns.Remove(checkHashColumn);
 
             var result2 = sQLHandler.UpdateDA(sqlDT, schema, dtName, server);
 
@@ -152,9 +144,6 @@ namespace CIMSave
             // checksum columns for each row?
             HashTable sqlHash = HashDT(sQLDt);
             HashTable fileHash = HashDT(fileDt);
-            // do primary keys exist? maybe not a good idea.
-            //sQLDt.PrimaryKey = new DataColumn[] { sQLDt.Columns["Name"], sQLDt.Columns[checkHashColumn] };
-            //fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["Name"], fileDt.Columns[checkHashColumn] };
             sQLDt.PrimaryKey = new DataColumn[] { sQLDt.Columns["id"]};
             fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["id"]};
 
@@ -169,32 +158,12 @@ namespace CIMSave
 
             // delete all fileDT that are already in sqlDT
             deleteDTinDT(fileDt, fileHash, sQLDt, sqlHash);
-            //fileDt.AcceptChanges(); // flush deleted rows from the fileDT, these are unneeded records.
-            // or mark as obsolete?
 
             // add all fileDT that are left
             sQLDt.Merge(fileDt, true);
-            // and set _firstseen to now?
 
-            //SQLHandler.
-
-            //sQLDt.AcceptChanges();
             return true;
-            //throw new NotImplementedException();
         }
-
-        //private bool hashEqual(Dictionary<int, byte[]> hashList, int key, byte[] otherHash)
-        //{
-        //    bool found = hashList.TryGetValue(key, out byte[] hash);
-        //    if (!found) return false;
-        //    return ByteArraysEqual(hash , otherHash);
-        //}
-
-        //private byte[] hashValue(Dictionary<int, byte[]> hashList, int key)
-        //{
-        //    bool found = hashList.TryGetValue(key, out byte[] hash);
-        //    return (found)? hash : new byte[] { };
-        //}
 
         private bool deleteDTinDT(DataTable dtWithExtra, HashTable hashExtra,
             DataTable dtWithBase, HashTable hashBase)
@@ -204,11 +173,6 @@ namespace CIMSave
             var tempDt = dtWithBase.Select(null, null, DataViewRowState.CurrentRows);
             foreach (var xSum in hashBase.Hashs())
             {
-                //int xId = xObj.Key;// (Dictionary<int, HashSig>)xObj).Key();
-                //var xsum = xObj;//.Value; // hashBase.HashValue(xId);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
-                //    foreach (int xId in hashBase)
-                //{
-                //    var xsum = hashBase.HashValue(xId);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
                 if (hashExtra.TryGetID(xSum, out int idExtra))
                 {
                     (from myRow in dtWithExtra.AsEnumerable()
@@ -217,36 +181,6 @@ namespace CIMSave
                                 .FirstOrDefault<DataRow>()?.Delete();
                 }
             }
-            //foreach (DataRow sdr in tempDt)
-            //{
-            //    //var xname = sdr.Field<string>("Name");
-            //    var xid = sdr.Field<int>("id");
-            //    var xsum = hashBase.HashValue(xid);// hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
-            //    if (hashExtra.Exists(xsum))
-            //    {
-            //        var idExtra = hashExtra.RecordID(xsum);
-            //        //var fdr = (from myRow in dtWithExtra.AsEnumerable()
-            //        //           where myRow.Field<string>("Name") == xname &&
-            //        //                  hashExtra.HashValue(myRow.Field<int>("id")).Equals( xsum)
-            //        //                  //hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
-            //        //                   //myRow.Field<string>(checkHashColumn) == xsum
-            //        //           select myRow)
-            //        //            .FirstOrDefault<DataRow>();
-            //        var fdr = (from myRow in dtWithExtra.AsEnumerable()
-            //                   where myRow.Field<int>("id") == idExtra // &&
-            //                                                           //     hashExtra.HashValue(myRow.Field<int>("id")).Equals(xsum)
-            //                                                           //hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
-            //                                                           //myRow.Field<string>(checkHashColumn) == xsum
-            //                   select myRow)
-            //                    .FirstOrDefault<DataRow>();
-            //        if (fdr != null)
-            //        {
-            //            //var id = fdr.Field<int>("id");
-            //            //Console.WriteLine($"Deleting row {xid}: {xname} hash {xsum.Left(8)} because it is in database {basename} table.");
-            //            fdr.Delete();
-            //        }
-            //    }
-            //}
             return status;
         }
 
@@ -255,7 +189,6 @@ namespace CIMSave
         {
             var basename = dtWithBase.TableName;
             bool status = true;
-            //List<DataRow> dr = dtWithExtra.AsEnumerable().ToList<DataRow>();
             var toKeep = new SortedSet<int>();
 
             foreach (var xSum in hashBase.Hashs())
@@ -266,40 +199,16 @@ namespace CIMSave
                 }
             }
 
-
-            //var dtxe = dtWithExtra.AsEnumerable();
-            //foreach (DataRow sdr in dtWithBase.Rows)
-            //{
-            //    var xname = sdr.Field<string>("Name");
-            //    var xid = sdr.Field<int>("id");
-            //    //var xsum = sdr.Field<string>(checkHashColumn);
-            //    var xsum = hashBase.HashValue(xid); // hashValue(hashBase, xid); //sdr.Field<string>(checkHashColumn);
-            //    // by intent, this will keep one and only one match
-            //    var xdr = (from myRow in dtxe // dtWithExtra.AsEnumerable()
-            //               where myRow.Field<string>("Name") == xname &&
-            //                     hashEqual(hashExtra, myRow.Field<int>("id"), xsum)
-            //                     //hashValue(hashExtra, myRow.Field<int>("id")) == xsum
-            //                     //myRow.Field<string>(checkHashColumn) == xsum
-            //               select myRow)
-            //                .FirstOrDefault<DataRow>();
-            //    if (xdr != null)
-            //    {
-            //        var id = (int)xdr["id"];
-            //        //Console.WriteLine($"Keeping  row {id}: {xname} hash {xsum.Left(8)} because it is in file {basename}.json.");
-            //        toKeep.Add(id); // (int)xdr["id"]);
-            //    }
-            //}
-
             foreach (DataRow xdr in dtWithExtra.Rows)
             {
                 var id = xdr.Field<int>("id");
                 if (!toKeep.Contains(id))
                 {   // get rid of unknow record ids
                     var xname = xdr.Field<string>("Name");
-                    //var xid = xdr.Field<int>("id");
+                    var xidStr = String.Format("{0,4:####}", id);
                     var xsumStr = hashExtra.HashValue(id).ToString().Left(8); // hashValue(hashExtra, id); //sdr.Field<string>(checkHashColumn);
                     //var xsum = xdr.Field<string>(checkHashColumn);
-                    Console.WriteLine($"Deleting row {id}: {xname} hash {xsumStr} because it is not in file {basename}.json.");
+                    Console.WriteLine($"Deleting row {xidStr}: {xname} hash {xsumStr} because it is not in file {basename}.json.");
                     xdr.Delete();
                 }
             }
@@ -308,8 +217,7 @@ namespace CIMSave
 
 
         HashTable HashDT(DataTable dt)
-        {   //TODO: do not hash Server, ID, or ServerID columns;
-            //dt.Columns.Add(checkHashColumn, typeof(string));
+        {   
             var hashList = new HashTable() ; //Dictionary<int, byte[]>(); // HashList<int, string>
             var column = dt.Columns;
             foreach (DataRow row in dt.Rows)
@@ -324,28 +232,6 @@ namespace CIMSave
         {
             var ok = sQLHandler.FillDT(sqlDT, schema, tableName, server);
             return ok;
-            //throw new NotImplementedException();
-        }
-
-        [Obsolete]
-        private T NotUsedGetIntValue<T>(string s) where T : IConvertible
-        {
-
-            return (T)Convert.ChangeType(s, typeof(T));
-
-
-            //bool success = s.TryParse<T>(s, out T aNumber);
-            //if (success)
-            //{
-            //    byte[] bytes = BitConverter.GetBytes(aNumber);
-            //    Int16 x = Convert.ToInt16(bytes);
-            //    string y = x.ToString();
-            //    return y;
-            //}
-            //else
-            //{
-            //    return s;
-            //}
         }
 
         private bool FillDataTable(DataTable fileDt, InfoParts fullPartsList, int serverId)
@@ -400,7 +286,6 @@ namespace CIMSave
                 fileDt.Rows.Add(myRow);
             }
             return true;
-            //throw new NotImplementedException();
         }
 
         private string GetStringIntforUInt(string partType, string partValue)
@@ -488,7 +373,6 @@ namespace CIMSave
             var tableExists = sQLHandler.TableExists(schema, tableName); // dtName);
             if (tableExists)
             {
-                //bool firstNewCol = true;
                 int failures = 0;
                 // check all columns
                 foreach (var col in tableColumns)
@@ -525,7 +409,7 @@ namespace CIMSave
             }
             else
             {
-                // how long is the "Name" key field
+                // how long is the "Name" key field?
                 int nameLength = 32;    // guess
                 {
                     try
@@ -636,20 +520,6 @@ namespace CIMSave
                 {
                     pType = "String";
                     len = part.Value.Length;
-                    // arrays!
-                    // UInt16[]
-                    //if (pType.Equals("UInt16[]"))
-                    //{
-                    //    pType = "string";
-                    //    len = part.Value.Length;
-                    //}
-                    //else if (pType.Equals("UInt16"))
-                    //{
-                    //    len = 2;
-                    //}
-                    // String[]"
-                    // Byte[]
-                    // Boolean[]
                 }
                 else if (pType.StartsWith("$"))
                 {
@@ -747,76 +617,55 @@ namespace CIMSave
                     };
                     tableColumns.Add("Name", newtc);
                 }
-                //{   // id column - need this here or not?
-                //    var newtc = new TableColumn()
-                //    {
-                //        ColName = "id",
-                //        ColType = "Int32",
-                //        ColLength = 4
-                //    };
-                //    tableColumns.Add("id", newtc);
-                //}
             }
             return tableColumns;
 
         }
 
-        // https://stackoverflow.com/questions/12416249/hashing-a-string-with-sha256
-        static string HashStringOfString(string randomString)
-        {
-            var crypt = new System.Security.Cryptography.SHA256Managed();
-            var hash = new System.Text.StringBuilder();
-            byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-            // johnston change
-            return Convert.ToBase64String(crypto);
-            //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
-            //return hash.ToString();
-        }
-
-        //static byte[] HashBytesOfString(string randomString)
+        //// https://stackoverflow.com/questions/12416249/hashing-a-string-with-sha256
+        //static string HashStringOfString(string randomString)
         //{
         //    var crypt = new System.Security.Cryptography.SHA256Managed();
-        //    //var hash = new System.Text.StringBuilder();
-        //    //byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
+        //    var hash = new System.Text.StringBuilder();
+        //    byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
         //    // johnston change
-        //    return crypt.ComputeHash(Encoding.UTF8.GetBytes(randomString));
-        //    //return Convert.ToBase64String(crypto);
+        //    return Convert.ToBase64String(crypto);
         //    //foreach (byte theByte in crypto) {hash.Append(theByte.ToString("x2"));}
         //    //return hash.ToString();
         //}
 
-        // https://stackoverflow.com/questions/1389570/c-sharp-byte-array-comparison
-        // jon skeet suggestion, further work by Guffa, and 8byte suggestion by Joe
+        //// https://stackoverflow.com/questions/1389570/c-sharp-byte-array-comparison
+        //// jon skeet suggestion, further work by Guffa, and 8byte suggestion by Joe
 
-        public unsafe bool ByteArraysEqual(byte[] b1, byte[] b2)
-        {
-            if (b1 == b2) return true;
-            if (b1 == null || b2 == null) return false;
-            if (b1.Length != b2.Length) return false;
-            int len = b1.Length;
-            fixed (byte* p1 = b1, p2 = b2)
-            {
-                long* i1 = (long*)p1;
-                long* i2 = (long*)p2;
-                while (len >= sizeof(long))
-                {
-                    if (*i1 != *i2) return false;
-                    i1++;
-                    i2++;
-                    len -= sizeof(long);
-                }
-                byte* c1 = (byte*)i1;
-                byte* c2 = (byte*)i2;
-                while (len > 0)
-                {
-                    if (*c1 != *c2) return false;
-                    c1++;
-                    c2++;
-                    len--;
-                }
-            }
-            return true;
-        }
+        //public unsafe bool ByteArraysEqual(byte[] b1, byte[] b2)
+        //{
+        //    if (b1 == b2) return true;
+        //    if (b1 == null || b2 == null) return false;
+        //    if (b1.Length != b2.Length) return false;
+        //    int len = b1.Length;
+        //    fixed (byte* p1 = b1, p2 = b2)
+        //    {
+        //        long* i1 = (long*)p1;
+        //        long* i2 = (long*)p2;
+        //        while (len >= sizeof(long))
+        //        {
+        //            if (*i1 != *i2) return false;
+        //            i1++;
+        //            i2++;
+        //            len -= sizeof(long);
+        //        }
+        //        byte* c1 = (byte*)i1;
+        //        byte* c2 = (byte*)i2;
+        //        while (len > 0)
+        //        {
+        //            if (*c1 != *c2) return false;
+        //            c1++;
+        //            c2++;
+        //            len--;
+        //        }
+        //    }
+        //    return true;
+        //}
 
 
         // https://stackoverflow.com/questions/43289/comparing-two-byte-arrays-in-net
@@ -833,32 +682,32 @@ namespace CIMSave
         //    Span<byte> bytes = arr; // Implicit cast from T[] to Span<T> 
         //}
 
-        // 64 bit hash
-        // https://stackoverflow.com/questions/8820399/c-sharp-4-0-how-to-get-64-bit-hash-code-of-given-string
-        static Int64 GetInt64HashCode(string strText)
-        {
-            Int64 hashCode = 0;
-            if (!string.IsNullOrEmpty(strText))
-            {
-                //Unicode Encode Covering all characterset
-                byte[] byteContents = Encoding.UTF8.GetBytes(strText);
-                //System.Security.Cryptography.SHA256 hash =
-                //            new System.Security.Cryptography.SHA256CryptoServiceProvider();
-                System.Security.Cryptography.SHA256 hash2 = new System.Security.Cryptography.SHA256Managed();
-                byte[] hashText = hash2.ComputeHash(byteContents);
-                //32Byte hashText separate
-                //hashCodeStart = 0~7  8Byte
-                //hashCodeMedium = 8~23  8Byte
-                //hashCodeEnd = 24~31  8Byte
-                //and Fold
-                Int64 hashCodeStart = BitConverter.ToInt64(hashText, 0);
-                //Int64 hashCodeFirstMid = BitConverter.ToInt64(hashText, 8);
-                //Int64 hashCodeLastMid = BitConverter.ToInt64(hashText, 16);
-                //Int64 hashCodeEnd = BitConverter.ToInt64(hashText, 24);
-                hashCode = hashCodeStart; // ^ hashCodeFirstMid ^ hashCodeLastMid ^ hashCodeEnd;
-            }
-            return (hashCode);
-        }
+        //// 64 bit hash
+        //// https://stackoverflow.com/questions/8820399/c-sharp-4-0-how-to-get-64-bit-hash-code-of-given-string
+        //static Int64 GetInt64HashCode(string strText)
+        //{
+        //    Int64 hashCode = 0;
+        //    if (!string.IsNullOrEmpty(strText))
+        //    {
+        //        //Unicode Encode Covering all characterset
+        //        byte[] byteContents = Encoding.UTF8.GetBytes(strText);
+        //        //System.Security.Cryptography.SHA256 hash =
+        //        //            new System.Security.Cryptography.SHA256CryptoServiceProvider();
+        //        System.Security.Cryptography.SHA256 hash2 = new System.Security.Cryptography.SHA256Managed();
+        //        byte[] hashText = hash2.ComputeHash(byteContents);
+        //        //32Byte hashText separate
+        //        //hashCodeStart = 0~7  8Byte
+        //        //hashCodeMedium = 8~23  8Byte
+        //        //hashCodeEnd = 24~31  8Byte
+        //        //and Fold
+        //        Int64 hashCodeStart = BitConverter.ToInt64(hashText, 0);
+        //        //Int64 hashCodeFirstMid = BitConverter.ToInt64(hashText, 8);
+        //        //Int64 hashCodeLastMid = BitConverter.ToInt64(hashText, 16);
+        //        //Int64 hashCodeEnd = BitConverter.ToInt64(hashText, 24);
+        //        hashCode = hashCodeStart; // ^ hashCodeFirstMid ^ hashCodeLastMid ^ hashCodeEnd;
+        //    }
+        //    return (hashCode);
+        //}
 
     }
 }

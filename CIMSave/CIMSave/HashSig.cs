@@ -120,9 +120,10 @@ namespace CIMSave
 
         public HashSig()
         {
-            var zeroArray = new Byte[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-            MapBytes(zeroArray);
+            l0 = l1 = l2 = l3 = 0;
+            //var zeroArray = new Byte[] {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            //                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+            //MapBytes(zeroArray);
         }
 
         public bool Equals(HashSig h2)
