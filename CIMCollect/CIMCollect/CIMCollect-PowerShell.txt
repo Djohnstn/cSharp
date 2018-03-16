@@ -239,6 +239,18 @@ $array |
 ; collect pipc.ini, 32 & 64
 ; collect pilogin.ini, 32 & 64
 
+[Hosts]
+File=%windir%\System32\drivers\etc\hosts.
+TrimSpace=All
+;TrimSpace=Edge
+Comment=#
+Missing=*No Hosts*
+
+[OtherList]
+File=%programfiles%\Company\Project\Program\List.txt
+TrimSpace=All
+; server, section, line#, line text
+Missing=*No List.txt*
 
 [piarchives]
 ; collect pi archives and status, name, start/end, type, etc

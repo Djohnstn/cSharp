@@ -7,11 +7,14 @@
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using IniFile;
 
 namespace CIMCollect
 {
     class Collect
     {
+        //private bool FirstFileCall = true;
+
         public string SaveToFolder { get; set; } = "";
 
         public void AllConfig()
@@ -43,15 +46,16 @@ namespace CIMCollect
                 // check signature on this file, set to NO if you do not want to run the file
                 var iniCheck = ini.GetValue("cimcollect", "cimcollect", "NO");
                 if (iniCheck.Equals("NO")) continue;
-                // if value starts with 0 or NO or No or False, bail out of this file
+                // if value starts with 0 or NO or No or False or Nyet or Nien, bail out of this file
                 if ("0fn".ToLower().Contains((iniCheck + "N").Substring(0, 1).ToLower())) continue;
-
-                EachFileSection(ref collections, server, ref fileMilliSeconds, filename, ini);
+                FileRunner.EachFileSection(server, ref fileMilliSeconds, filename, ini);
+                EachPowerShellSection(ref collections, server, ref fileMilliSeconds, filename, ini);
 
                 Console.WriteLine($"{LogTime()} Processed file {filename}, {collections} collections in {fileMilliSeconds}ms.");
                 totalMilliSeconds += fileMilliSeconds;
                 fileMilliSeconds = 0;
             }
+            FileRunner.FinishFileSaver(SaveToFolder);
             Console.WriteLine($"{LogTime()} Processed {files} files, {collections} collections in {totalMilliSeconds}ms.");
             if (Environment.UserInteractive)
             {
@@ -59,7 +63,8 @@ namespace CIMCollect
             }
         }
 
-        private void EachFileSection(ref int collections, string server, ref long fileMilliSeconds, string filename, IniFile.IniFile ini)
+
+        private void EachPowerShellSection(ref int collections, string server, ref long fileMilliSeconds, string filename, IniFile.IniFile ini)
         {
             foreach (var section in ini.GetSection("*"))
             {
@@ -75,12 +80,12 @@ namespace CIMCollect
                 bool result = false;
                 if (!String.IsNullOrWhiteSpace(query))
                 {
-                    result = RunQuery(server, ref fileMilliSeconds, filename, section, iniName, query);
+                    result = RunPowerShellQuery(server, ref fileMilliSeconds, filename, section, iniName, query);
                 }
             }
         }
 
-        private bool RunQuery(string server, ref long fileMilliSeconds, string filename, string section, string iniName, string query)
+        private bool RunPowerShellQuery(string server, ref long fileMilliSeconds, string filename, string section, string iniName, string query)
         {
             bool result;
             Console.WriteLine($"{LogTime()} Begin {filename}::{server}:[{section}]");
@@ -98,6 +103,7 @@ namespace CIMCollect
             Console.WriteLine($"{LogTime()} Finis {filename}::{server}:[{section}] rc={result}; in={sw.ElapsedMilliseconds}ms");
             return result;
         }
+
 
         private string LogTime()
         {

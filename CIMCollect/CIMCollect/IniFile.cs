@@ -41,7 +41,6 @@ namespace IniFile
         /// <param name="commentDelimiter">The comment delimiter string (default value is ";").
         /// </param>
         /// 
-
         public IniFile(string file, string commentDelimiter = ";")
         {
             CommentDelimiter = commentDelimiter;
@@ -175,13 +174,33 @@ namespace IniFile
                     yield return sectionname;
                 }
             }
-        }  
+        }
+
+
+        /// <summary>
+        /// GetSection returns an enumerable list of section names matching a pattern, containing a key matching a name
+        /// </summary>
+        /// <param name="pattern">defaults to * all </param>
+        /// <returns></returns>
+        public IEnumerable<string> GetSection(string pattern = "*", string key = "")
+        {
+            foreach (var sectionname in Sections.Keys)
+            {
+                if (sectionname.IsLike(pattern.ToLower()))
+                {
+                    if (this.TryGetValue(sectionname, key, out string value))
+                    {
+                        yield return sectionname;
+                    }
+                }
+            }
+        }
+
 
         // "[section]key"   -> "value1"
         // "[section]key~2" -> "value2"
         // "[section]key~3" -> "value3"
         //private Dictionary<string, string> dictionary = new Dictionary<string, string>();
-
         private bool TryGetValue(string section, string key, out string value)
         {
             string key2;
@@ -203,10 +222,8 @@ namespace IniFile
         /// <seealso cref="GetAllValues"/>
         public string GetValue(string section, string key, string defaultValue = "")
         {
-            string value;
-            if (!TryGetValue(section, key, out value))
+            if (!TryGetValue(section, key, out string value))
                 return defaultValue;
-
             return value;
         }
 
