@@ -1,0 +1,358 @@
+﻿
+
+
+        // https://stackoverflow.com/questions/9694834/encountering-a-filesystemrights-value-that-isnt-defined-in-enumeration
+        public static FileSystemRights FileSystemRightsCorrector(FileSystemRights fsRights, bool removeSynchronizePermission = false)
+        {
+            // from: https://msdn.microsoft.com/en-us/library/aa374896%28v=vs.85%29.aspx
+            const int C_BitGenericRead = (1 << 31);
+            const int C_BitGenericWrite = (1 << 30);
+            const int C_BitGenericExecute = (1 << 29);
+            const int C_BitGenericAll = (1 << 28);
+
+
+            // https://msdn.microsoft.com/en-us/library/aa364399.aspx
+            // FILE_GENERIC_READ = FILE_READ_ATTRIBUTES | FILE_READ_DATA | FILE_READ_EA | STANDARD_RIGHTS_READ | SYNCHRONIZE 
+            // FILE_GENERIC_WRITE = FILE_APPEND_DATA | FILE_WRITE_ATTRIBUTES | FILE_WRITE_DATA | FILE_WRITE_EA | STANDARD_RIGHTS_WRITE | SYNCHRONIZE
+            // FILE_GENERIC_EXECUTE  = FILE_EXECUTE | FILE_READ_ATTRIBUTES | STANDARD_RIGHTS_EXECUTE | SYNCHRONIZE 
+
+            //from Winnt.h
+            //#define STANDARD_RIGHTS_READ             (READ_CONTROL)
+            //#define STANDARD_RIGHTS_WRITE            (READ_CONTROL)
+            //#define STANDARD_RIGHTS_EXECUTE          (READ_CONTROL)
+
+            // from: https://msdn.microsoft.com/en-us/library/windows/desktop/aa379607%28v=vs.85%29.aspx
+            // READ_CONTROL = "The right to read the information in the object's security descriptor,"
+            // ==> STANDARD_RIGHTS_READ, STANDARD_RIGHTS_WRITE, STANDARD_RIGHTS_EXECUTE == FileSystemRights.ReadPermissions
+
+            // translation for the generic rights to the FileSystemRights enum
+            const FileSystemRights C_FsrGenericRead = FileSystemRights.ReadAttributes | FileSystemRights.ReadData | FileSystemRights.ReadExtendedAttributes | FileSystemRights.ReadPermissions | FileSystemRights.Synchronize;
+            const FileSystemRights C_FsrGenericWrite = FileSystemRights.AppendData | FileSystemRights.WriteAttributes | FileSystemRights.WriteData | FileSystemRights.WriteExtendedAttributes | FileSystemRights.ReadPermissions | FileSystemRights.Synchronize;
+            const FileSystemRights C_FsrGenericExecute = FileSystemRights.ExecuteFile | FileSystemRights.ReadAttributes | FileSystemRights.ReadPermissions | FileSystemRights.Synchronize;
+
+            if (((int)fsRights & C_BitGenericRead) != 0)
+            {
+                fsRights |= C_FsrGenericRead;
+            }
+
+            if (((int)fsRights & C_BitGenericWrite) != 0)
+            {
+                fsRights |= C_FsrGenericWrite;
+            }
+
+            if (((int)fsRights & C_BitGenericExecute) != 0)
+            {
+                fsRights |= C_FsrGenericExecute;
+            }
+
+            if (((int)fsRights & C_BitGenericAll) != 0)
+            {
+                fsRights |= FileSystemRights.FullControl;
+            }
+
+            // delete the 4 highest bits if present
+            fsRights = (FileSystemRights)((int)fsRights & ~(C_BitGenericRead | C_BitGenericWrite | C_BitGenericExecute | C_BitGenericAll));
+
+            // for some purposes the "Synchronize" flag must be deleted
+            if (removeSynchronizePermission == true)
+            {
+                fsRights = (FileSystemRights)((int)fsRights & ~((int)FileSystemRights.Synchronize));
+            }
+
+            return fsRights;
+        }
+
+
+
+		
+        //public Tuple<string, string, bool> ACLold(DirectoryInfo directoryInfo)
+        //{
+        //    // list2.Any(s => str.Contains(s))
+        //    var sb = new StringBuilder();
+
+        //    string error = string.Empty;
+
+        //    bool allInherited = true;
+
+        //    try
+        //    {
+        //        DirectorySecurity dirSecurity = directoryInfo.GetAccessControl();
+        //        var authRuleColl = dirSecurity.GetAccessRules(true, true, typeof(NTAccount));
+        //        IdentityReference lastIdRef = null;
+        //        AccessControlType? lastAcType = null;
+        //        foreach (FileSystemAccessRule fsaRule in authRuleColl)
+        //        {
+        //            if (!fsaRule.IsInherited) allInherited = false;
+        //            var thisIdRef = fsaRule.IdentityReference;
+        //            var thisAcType = fsaRule.AccessControlType;
+        //            if (lastIdRef != thisIdRef)
+        //            {  // close out old rule
+        //                if (lastIdRef != null) sb.Append(");");
+        //                lastAcType = null;
+        //                var thisIdValue = thisIdRef.Value;
+        //                //if (Builtins.Any(s => thisIdRef.Value.StartsWith(s)))
+        //                //{
+        //                //    var ixof = thisIdValue.IndexOf('\\');
+        //                //    sb.Append(thisIdValue.Substring(ixof,thisIdValue.Length - ixof));
+        //                //}
+        //                //else
+        //                //{
+        //                    sb.Append(thisIdRef);
+        //                //}
+        //                sb.Append(":");
+        //            }
+        //            else
+        //            {
+        //                //sb.Append(fsaRule.IdentityReference);
+        //            }
+        //            if (lastAcType != thisAcType)
+        //            {
+        //                if (lastAcType != null) sb.Append(")");
+        //                sb.Append((fsaRule.AccessControlType == AccessControlType.Allow) ? "A(" : "D(");  // allow or deny?
+        //            }
+        //            else
+        //            {
+        //                sb.Append(",");
+        //            }
+        //            var fsRight = fsaRule. DirFSRight(fsaRule);
+        //            sb.Append(fsRight);
+
+        //            lastIdRef = thisIdRef;
+        //            lastAcType = thisAcType;
+        //        }
+        //        sb.Append(")");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        error = ex.Message;
+        //    }
+        //    finally
+        //    {
+
+        //    }
+        //    return Tuple.Create(sb.ToString(), error, allInherited);
+
+        //}
+
+        public string DirFSRight(FileSystemAccessRule fsaRule)
+        {
+            const int C_BitGenericRead = (1 << 31);
+            const int C_BitGenericWrite = (1 << 30);
+            const int C_BitGenericExecute = (1 << 29);
+            const int C_BitGenericAll = (1 << 28);
+
+            string right = "?";
+            var r = fsaRule.FileSystemRights;
+            //var inherited = (fsaRule.IsInherited) ? "(I)" : "";
+            var inherited = (!fsaRule.IsInherited) ? string.Empty : 
+                                ((fsaRule.InheritanceFlags.HasFlag(InheritanceFlags.ContainerInherit)) ? "(CI)" : "") +
+                                ((fsaRule.InheritanceFlags.HasFlag(InheritanceFlags.ObjectInherit)) ? "(OI)" : "");
+
+            //switch (r)
+            switch (FileSystemRightsCorrector(r, true))
+            {
+                case FileSystemRights.FullControl:
+                    right = "F";
+                    break;
+                case FileSystemRights.ReadData:
+                    right = "RD";
+                    break;
+                //case FileSystemRights.ListDirectory:
+                //    right = "L";
+                //    break;
+                case FileSystemRights.WriteData:
+                    right = "WD";
+                    break;
+                //case FileSystemRights.CreateFiles:
+                //    right = "C";
+                //    break;
+                //case FileSystemRights.AppendData:
+                //    right = "A";
+                //    break;
+                case FileSystemRights.CreateDirectories:
+                    right = "CD";
+                    break;
+                case FileSystemRights.ReadExtendedAttributes:
+                    right = "RX";
+                    break;
+                case FileSystemRights.WriteExtendedAttributes:
+                    right = "WX";
+                    break;
+                case FileSystemRights.ExecuteFile:
+                    right = "X";
+                    break;
+                //case FileSystemRights.Traverse:
+                //    break;
+                case FileSystemRights.DeleteSubdirectoriesAndFiles:
+                    right = "D";
+                    break;
+                case FileSystemRights.ReadAttributes:
+                    right = "RA";
+                    break;
+                case FileSystemRights.WriteAttributes:
+                    right = "WA";
+                    break;
+                case FileSystemRights.Delete:
+                    right = "D";
+                    break;
+                case FileSystemRights.ReadPermissions:
+                    right = "RP";
+                    break;
+                case FileSystemRights.ChangePermissions:
+                    right = "WP";
+                    break;
+                case FileSystemRights.TakeOwnership:
+                    right = "TO";
+                    break;
+                case FileSystemRights.Synchronize:
+                    right = "S";
+                    break;
+                case FileSystemRights.Modify:
+                    right = "M";
+                    break;
+                case FileSystemRights.Write:
+                    right = "W";
+                    break;
+                case FileSystemRights.ReadAndExecute:
+                    right = "RX";
+                    break;
+                case FileSystemRights.Read:
+                    right = "R";
+                    break;
+                case FileSystemRights.Read | FileSystemRights.Synchronize:
+                    right = "R+S";
+                    break;
+                case FileSystemRights.ReadAndExecute | FileSystemRights.Synchronize:
+                    right = "RX+S";
+                    break;
+                case FileSystemRights.Modify | FileSystemRights.Synchronize:
+                    right = "M+S";
+                    break;
+                case System.Security.AccessControl.FileSystemRights.DeleteSubdirectoriesAndFiles | System.Security.AccessControl.FileSystemRights.Write | System.Security.AccessControl.FileSystemRights.Delete | System.Security.AccessControl.FileSystemRights.Read | System.Security.AccessControl.FileSystemRights.Synchronize:
+                    right = "R+D+S";
+                    break;
+                default:
+                    if (int.TryParse(r.ToString(), out int iSecurityBits))
+                    {
+                        //right = sbRight.ToString();
+                        int iSecurityBits2 = iSecurityBits | ~(int)FileSystemRights.Synchronize;
+                        if (iSecurityBits == C_BitGenericAll) { right = "F"; }
+                        else if (iSecurityBits == (C_BitGenericRead | C_BitGenericWrite | C_BitGenericExecute)) { right = "M"; }
+                        else if (iSecurityBits == (C_BitGenericRead | C_BitGenericWrite)) { right = "RW"; }
+                        else if (iSecurityBits == (C_BitGenericRead | C_BitGenericExecute)) { right = "RX"; }
+                        else if (iSecurityBits == (C_BitGenericExecute)) { right = "X"; }
+                        else if (iSecurityBits2 == C_BitGenericAll) { right = "F"; }
+                        else if (iSecurityBits2 == (C_BitGenericRead | C_BitGenericWrite | C_BitGenericExecute)) { right = "M"; }
+                        else if (iSecurityBits2 == (C_BitGenericRead | C_BitGenericWrite                      )) { right = "RW"; }
+                        else if (iSecurityBits2 == (C_BitGenericRead |                     C_BitGenericExecute)) { right = "RX"; }
+                        else if (iSecurityBits2 == (                                       C_BitGenericExecute)) { right = "X"; }
+                        else
+                        {
+                            right = "0x" + iSecurityBits.ToString("X");
+                        }
+                    }
+                    else
+                    {
+                        right = TryRightsBits(r);
+                        if (right.Length > 4)
+                        {
+                            right = r.ToString();
+                            right = right.Replace("DeleteSubdirectoriesAndFiles", "DS");
+                            right = right.Replace("ChangePermissions", "P");
+                            right = right.Replace("ReadAndExecute", "RX");
+                            right = right.Replace("TakeOwnership", "O");
+                            right = right.Replace("CreateFiles", "C");
+                            right = right.Replace("FullControl", "F");
+                            right = right.Replace("Synchronize", "S");
+                            right = right.Replace("AppendData", "A");
+                            right = right.Replace("Modify", "M");
+                            right = right.Replace("Delete", "D");
+                            right = right.Replace("Write", "W");
+                            right = right.Replace("Read", "R");
+                            right = right.Replace(',', '+');
+                            right = right.Replace(" ", "");
+                        }
+                    }
+                    break;
+            }
+
+            if (fsaRule.IsInherited)
+            {
+                return $"{inherited}{right}";
+            }
+            else
+            {
+                return right;
+            }
+        }
+
+        private static string TryRightsBits(FileSystemRights r)
+        {
+            var sbRight = new StringBuilder();
+            if (r.HasFlag(FileSystemRights.FullControl))
+            {
+                return "F";
+                //sbRight.Append("F+");
+                //r = 0;
+            }
+            else
+            {
+                if (r.HasFlag(FileSystemRights.Modify))
+                {
+                    sbRight.Append("M+");
+                    r =  (FileSystemRights)((int)r & ~(Convert.ToInt32(FileSystemRights.Modify)));
+                }
+                else
+                {
+                    if (r.HasFlag(FileSystemRights.Write))
+                    {
+                        sbRight.Append("W+");
+                        r = (FileSystemRights)((int)r & ~(Convert.ToInt32(FileSystemRights.Write)));
+                    }
+                    if (r.HasFlag(FileSystemRights.ReadAndExecute))
+                    {
+                        sbRight.Append("RX+");
+                        r = (FileSystemRights)((int)r & ~(Convert.ToInt32(FileSystemRights.ReadAndExecute)));
+                    }
+                    else
+                    {
+                        if (r.HasFlag(FileSystemRights.Read))
+                        {
+                            sbRight.Append("R+");
+                            r = (FileSystemRights)((int)r & ~(Convert.ToInt32(FileSystemRights.Read)));
+                        }
+                        if (r.HasFlag(FileSystemRights.ExecuteFile))
+                        {
+                            sbRight.Append("X+");
+                            r = (FileSystemRights)((int)r & ~(Convert.ToInt32(FileSystemRights.ExecuteFile)));
+                        }
+                    }
+                }
+
+                if (r.HasFlag(FileSystemRights.ReadData)) sbRight.Append("RD+");
+                if (r.HasFlag(FileSystemRights.WriteData)) sbRight.Append("WD+");
+                if (r.HasFlag(FileSystemRights.CreateDirectories)) sbRight.Append("CD+");
+                //if (r.HasFlag(FileSystemRights.CreateFiles)) sbRight.Append("CF+");
+                //if (r.HasFlag(FileSystemRights.AppendData)) sbRight.Append("A+");
+                if (r.HasFlag(FileSystemRights.ReadExtendedAttributes)) sbRight.Append("Re+");
+                if (r.HasFlag(FileSystemRights.WriteExtendedAttributes)) sbRight.Append("We+");
+                //if (r.HasFlag(FileSystemRights.Traverse)) sbRight.Append("T+");
+                if (r.HasFlag(FileSystemRights.Delete))
+                {
+                    sbRight.Append("D+");
+                }
+                else
+                {
+                    if (r.HasFlag(FileSystemRights.DeleteSubdirectoriesAndFiles)) sbRight.Append("D+");
+                }
+                if (r.HasFlag(FileSystemRights.ReadAttributes)) sbRight.Append("RA+");
+                if (r.HasFlag(FileSystemRights.WriteAttributes)) sbRight.Append("WA+");
+                if (r.HasFlag(FileSystemRights.ReadPermissions)) sbRight.Append("RP+");
+                if (r.HasFlag(FileSystemRights.ChangePermissions)) sbRight.Append("P+");
+                if (r.HasFlag(FileSystemRights.TakeOwnership)) sbRight.Append("To+");
+                if (r.HasFlag(FileSystemRights.Synchronize)) sbRight.Append("S+");
+            }
+            if (sbRight.Length > 1) sbRight.Length--;
+            return sbRight.ToString();
+        }
+

@@ -48,7 +48,8 @@ namespace CIMCollect
                 if (iniCheck.Equals("NO")) continue;
                 // if value starts with 0 or NO or No or False or Nyet or Nien, bail out of this file
                 if ("0fn".ToLower().Contains((iniCheck + "N").Substring(0, 1).ToLower())) continue;
-                FileRunner.EachFileSection(server, ref fileMilliSeconds, filename, ini);
+                //FileRunner.EachFileSection(ref collections, server, ref fileMilliSeconds, filename, ini);
+                FileRunner.EachFileSection(ref collections, server, filename, ini);
                 EachPowerShellSection(ref collections, server, ref fileMilliSeconds, filename, ini);
 
                 Console.WriteLine($"{LogTime()} Processed file {filename}, {collections} collections in {fileMilliSeconds}ms.");

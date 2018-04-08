@@ -2,9 +2,5 @@
 {
     class DTJson
     {
-        public DTJson()
-        {
-        }
-
     }
 }
