@@ -6,7 +6,7 @@ using System.IO;
 
 namespace CIMCollect
 {
-    class FileSetup
+    public class FileSetup
     {
         public string IniFileName { get; set; } //        CimCollect-whatnot.ini
         public string SectionName { get; set; } //        [Hosts]
@@ -18,7 +18,7 @@ namespace CIMCollect
 
     }
 
-    internal class FileRunner
+    public class FileRunner
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private static List<FileSetup> FileSetupList = new List<FileSetup>();
@@ -33,7 +33,6 @@ namespace CIMCollect
 
         // part 1 - save all file sections for processing all at once into List<FileSetup>() FileSetupList;
         public static void EachFileSection(ref int collections, string server, 
-                                            //ref long fileMilliSeconds, 
                                             string filename, 
                                             IniFile.IniFile ini)
         {
@@ -46,15 +45,18 @@ namespace CIMCollect
                 var iniCollect = ini.GetValue(section, "cimcollect", "yes");
                 if ("0fn".ToLower().Contains((iniCollect + "Y").Substring(0, 1).ToLower())) continue;
                 var fileToCopyName = ini.GetValue(section, "File");
-                if (!String.IsNullOrWhiteSpace(fileToCopyName)) FileSetupList.Add(new FileSetup()
+                if (!String.IsNullOrWhiteSpace(fileToCopyName))
                 {
-                    IniFileName = iniFileName,
-                    SectionName = section,
-                    CommentMark = ini.GetValue(section, "Comment",""),
-                    FileMissing = ini.GetValue(section, "Missing","***no file***"),
-                    FilePath = fileToCopyName, // ini.GetValue(section, "File",""),
-                    TrimOptions = ini.GetValue(section,"Trim","None")
-                });
+                    FileSetupList.Add(new FileSetup()
+                    {
+                        IniFileName = iniFileName,
+                        SectionName = section,
+                        CommentMark = ini.GetValue(section, "Comment", ""),
+                        FileMissing = ini.GetValue(section, "Missing", "***no file***"),
+                        FilePath = fileToCopyName, // ini.GetValue(section, "File",""),
+                        TrimOptions = ini.GetValue(section, "Trim", "None")
+                    });
+                }
             }
         }
 
@@ -68,63 +70,102 @@ namespace CIMCollect
             sw.Start();
             foreach (var fileSection in FileSetupList)
             {
-                bool result = RunFileQuery(Server, 
-                                            fileSection.FilePath, 
-                                            fileSection.SectionName, 
-                                            fileSection.IniFileName);
+                bool result = RunFileQuery(Server, fileSection);
             }
             sw.Stop();
+            ToFile();
         }
 
         // part 2a
-        public static bool RunFileQuery(string server, string filename, string section, string iniName)
+        public static bool RunFileQuery(string server, FileSetup fileSetup)
         {
-            if (String.IsNullOrWhiteSpace(iniName)) return false;
+            if (String.IsNullOrWhiteSpace(fileSetup.IniFileName)) return false;
             bool result = false;
+            var filename = fileSetup.IniFileName;
+            var section = fileSetup.SectionName;
             logger.Info($"Begin {filename}::{server}:[{section}]");
             var sw = new Stopwatch();
             sw.Start();
             {
-                result = ToFile(SaveToFolder, Server, section, iniName);
+                result = ProcessFile(Server, section, fileSetup);
             }
             sw.Stop();
             logger.Info($"Finis {filename}::{server}:[{section}] rc={result}; in={sw.ElapsedMilliseconds}ms");
             return result;
         }
 
-        internal static bool ToFile(string saveToFolder, string server, string section, string iniName)
+
+        // part 2b
+        private static bool ProcessFile(string server, string section, FileSetup fileSetup)
         {
-            return false; // ReadFile
+            var nameid = fileSetup.FilePath;
+            var iniName = fileSetup.IniFileName;
+            var trimOptions = fileSetup.TrimOptions;
+            var filenotfound = fileSetup.FileMissing;
+            var comment = fileSetup.CommentMark;
+            var infoParts = HandleResults(server, section, nameid, iniName, trimOptions, filenotfound, comment);
+            Parts.PartsList.AddRange(infoParts.PartsList);
+            return true;
         }
 
 
-        private InfoParts HandleResults(string server, string dataset, string nameid, string filename)
+        // part 2c
+        private static InfoParts HandleResults(string server, string dataset, string nameid, 
+            string filename, string trimOptions, string filenotfound, string comment)
         {
-            FileInfo file = new FileInfo(filename);
+            var expandedFileName = Environment.ExpandEnvironmentVariables(nameid);
+            FileInfo file = new FileInfo(expandedFileName);
+            var simplefilename = file.Name;
+            var parts = new InfoParts(server, "file", DateTime.UtcNow);
+            int index = 0;
             if (file.Exists)
             {
-                int index = 0;
                 using (FileStream fs = file.OpenRead()) // this shares with open files, no crash
-                    using (StreamReader sr = new StreamReader(fs))
+                using (StreamReader sr = new StreamReader(fs))
                 {
-                    var line = sr.ReadLine();
-                    parts.Add(
-                                identity: "",
-                                index: ++index,
-                                name: nameid,
-                                type: "string",
-                                value: line
-                            );
+                    while (!sr.EndOfStream)
+                    {
+                        var line = Utilities.RemoveAfter(sr.ReadLine(), comment);
+                        string val;
+                        switch (trimOptions.Trim().ToLower())
+                        {
+                            case "edge":
+                                val = line.Trim();
+                                break;
+                            case "all":
+                                val = Utilities.ReduceWhiteSpace(line);
+                                break;
+                            default:
+                                val = line;
+                                break;
+                        }
+                        if (val.Length > 0)
+                        {
+                            ++index;
+                            parts.Add(simplefilename, 1, $"{dataset} {index}", "string", val);
+                        }
+                    }
+                }
+                if (parts.PartsList.Count < 1)
+                {
+                    parts.Add(simplefilename, 1, $"{dataset} {index}", "string", comment);  // add comment line if there was no uncommented data in the file
                 }
             }
-
-
-            foreach (var line in System.IO.File.ReadAllText(filename))
+            else
             {
-
+                parts.Add(simplefilename, 1, $"{dataset} {index}", "string", filenotfound);
             }
 
             return parts;
         }
+
+        // part 2z
+        private static bool ToFile()
+        {
+            Parts.ToJsonFile(SaveToFolder);
+            var count = Parts.PartsList.Count;
+            return true; 
         }
+
     }
+}

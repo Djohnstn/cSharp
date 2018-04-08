@@ -143,10 +143,8 @@ namespace CIMCollect
 
         public void ToJsonFile(string SaveToFolder = "")
         {
-            //CIMSave.GZfileIO.WriteStringToGZ($"{Server}_{Set}.Json", ToJson());
-            CIMSave.GZfileIO.WriteStringToGZ( Path.Combine(SaveToFolder,
-                                                    $"{Server}_{Set}.Json.gz"),
-                                        ToJson());
+            CIMSave.GZfileIO.WriteStringToGZ(Path.Combine(SaveToFolder, $"{Server}_{Set}.Json"), ToJson());
+            CIMSave.GZfileIO.WriteStringToGZ(Path.Combine(SaveToFolder, $"{Server}_{Set}.Json.gz"), ToJson());
         }
 
         //public ProcessInfoRequest fromJson(string json)

@@ -58,10 +58,7 @@ namespace CIMCollect
             }
             FileRunner.FinishFileSaver(SaveToFolder);
             Console.WriteLine($"{LogTime()} Processed {files} files, {collections} collections in {totalMilliSeconds}ms.");
-            if (Environment.UserInteractive)
-            {
-                PSRunner.Pause("Press any key to exit.", 30);
-            }
+            Utilities.SemiPause("Press any key to exit.", 30);
         }
 
 
