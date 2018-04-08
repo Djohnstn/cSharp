@@ -61,7 +61,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DTJson.cs" />
     <Compile Include="FindFiles.cs" />
     <Compile Include="GZfileIO.cs" />
     <Compile Include="HashSig.cs" />

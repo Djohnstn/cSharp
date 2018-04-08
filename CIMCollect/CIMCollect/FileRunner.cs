@@ -142,18 +142,18 @@ namespace CIMCollect
                         if (val.Length > 0)
                         {
                             ++index;
-                            parts.Add(simplefilename, 1, $"{dataset} {index}", "string", val);
+                            parts.Add(simplefilename, 1, $"{dataset} {index}", "String", val);
                         }
                     }
                 }
                 if (parts.PartsList.Count < 1)
                 {
-                    parts.Add(simplefilename, 1, $"{dataset} {index}", "string", comment);  // add comment line if there was no uncommented data in the file
+                    parts.Add(simplefilename, 1, $"{dataset} {index}", "String", comment);  // add comment line if there was no uncommented data in the file
                 }
             }
             else
             {
-                parts.Add(simplefilename, 1, $"{dataset} {index}", "string", filenotfound);
+                parts.Add(simplefilename, 1, $"{dataset} {index}", "String", filenotfound);
             }
 
             return parts;
