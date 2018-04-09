@@ -6,13 +6,21 @@ using System.IO;
 
 namespace CIMCollect
 {
+
     public class FileSetup
     {
+        public enum LineTrimming
+        {
+            None = 0,
+            Edge = 1,
+            All = 2
+        }
         public string IniFileName { get; set; } //        CimCollect-whatnot.ini
         public string SectionName { get; set; } //        [Hosts]
         public string FilePath { get; set; }    //        File=%windir%\System32\drivers\etc\hosts.
-        public string TrimOptions { get; set; } //        TrimSpace=All
-                                                //;TrimSpace=Edge
+        public LineTrimming TrimOptions { get; set; }
+                        //        TrimSpace=All
+                        //;TrimSpace=Edge
         public string CommentMark { get; set; } //Comment =#
         public string FileMissing { get; set; }  //Missing = *No Hosts*
 
@@ -47,6 +55,10 @@ namespace CIMCollect
                 var fileToCopyName = ini.GetValue(section, "File");
                 if (!String.IsNullOrWhiteSpace(fileToCopyName))
                 {
+                    var trimword = ini.GetValue(section, "Trim", "None").ToLower();
+                    var trimval = trimword.StartsWith("a") ? FileSetup.LineTrimming.All :
+                                    trimword.StartsWith("e") ? FileSetup.LineTrimming.Edge :
+                                    FileSetup.LineTrimming.None;
                     FileSetupList.Add(new FileSetup()
                     {
                         IniFileName = iniFileName,
@@ -54,7 +66,7 @@ namespace CIMCollect
                         CommentMark = ini.GetValue(section, "Comment", ""),
                         FileMissing = ini.GetValue(section, "Missing", "***no file***"),
                         FilePath = fileToCopyName, // ini.GetValue(section, "File",""),
-                        TrimOptions = ini.GetValue(section, "Trim", "None")
+                        TrimOptions = trimval
                     });
                 }
             }
@@ -111,7 +123,7 @@ namespace CIMCollect
 
         // part 2c
         private static InfoParts HandleResults(string server, string dataset, string nameid, 
-            string filename, string trimOptions, string filenotfound, string comment)
+            string filename, FileSetup.LineTrimming trimOptions, string filenotfound, string comment)
         {
             var expandedFileName = Environment.ExpandEnvironmentVariables(nameid);
             FileInfo file = new FileInfo(expandedFileName);
@@ -149,16 +161,16 @@ namespace CIMCollect
         }
 
 
-        private static string TrimAsNeeded(string line, string trimOptions)
+        private static string TrimAsNeeded(string line, FileSetup.LineTrimming trimOptions)
         {
             if (line.Length == 0) return String.Empty;
             string val;
-            switch (trimOptions.Trim().ToLower())
+            switch (trimOptions)
             {
-                case "edge":
+                case FileSetup.LineTrimming.Edge:
                     val = line.Trim();
                     break;
-                case "all":
+                case FileSetup.LineTrimming.All:
                     val = line.ReduceWhiteSpace();
                     break;
                 default:
