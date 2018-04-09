@@ -62,8 +62,12 @@ namespace CIMCollect
             }
             return keypress;
         }
+    }
 
-        public static string RemoveAfter(string x, string stop)
+    public static class StringExtensions
+    {
+
+        public static string RemoveAfter(this string x, string stop)
         {
             if (x.Contains(stop))
             {
@@ -75,12 +79,18 @@ namespace CIMCollect
                 return x;
             }
         }
-        public static string ReduceWhiteSpace(string x)
+
+        private static readonly Regex sWhitespace = new Regex(@"\s+");
+
+        public static string ReduceWhiteSpace(this string x)
         {
-            RegexOptions options = RegexOptions.None;
-            Regex regex = new Regex("[ ]{2,}", options);
-            var trimmed = regex.Replace(x.Trim(), " ");
-            return trimmed;
+            //RegexOptions options = RegexOptions.None;
+            ////Regex regex = new Regex("[ ]{2,}", options);
+            ////Regex rx2 = new Regex("\\s{2,}", options);
+            //Regex rx2 = new Regex(sWhitespace, options);
+            //var trimmed = rx2.Replace(x.Trim(), " ");
+            //return trimmed;
+            return sWhitespace.Replace(x, " ");
         }
 
     }

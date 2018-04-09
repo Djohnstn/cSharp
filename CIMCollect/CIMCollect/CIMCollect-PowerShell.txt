@@ -241,14 +241,14 @@ $array |
 
 [Hosts]
 File=%windir%\System32\drivers\etc\hosts.
-TrimSpace=All
-;TrimSpace=Edge
+Trim=All
+;Trim=Edge
 Comment=#
 Missing=*No Hosts*
 
 [OtherList]
 File=%programfiles%\Company\Project\Program\List.txt
-TrimSpace=All
+Trim=All
 ; server, section, line#, line text
 Missing=*No List.txt*
 

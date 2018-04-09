@@ -82,7 +82,7 @@ namespace CIMCollect
             if (String.IsNullOrWhiteSpace(fileSetup.IniFileName)) return false;
             bool result = false;
             var filename = fileSetup.IniFileName;
-            var section = fileSetup.SectionName;
+            var section = "line"; // fileSetup.SectionName;
             logger.Info($"Begin {filename}::{server}:[{section}]");
             var sw = new Stopwatch();
             sw.Start();
@@ -125,38 +125,48 @@ namespace CIMCollect
                 {
                     while (!sr.EndOfStream)
                     {
-                        var line = Utilities.RemoveAfter(sr.ReadLine(), comment);
-                        string val;
-                        switch (trimOptions.Trim().ToLower())
-                        {
-                            case "edge":
-                                val = line.Trim();
-                                break;
-                            case "all":
-                                val = Utilities.ReduceWhiteSpace(line);
-                                break;
-                            default:
-                                val = line;
-                                break;
-                        }
+                        //var line = Utilities.RemoveAfter(sr.ReadLine().re, comment);
+                        var line = sr.ReadLine().RemoveAfter(comment);
+                        string val = TrimAsNeeded(line, trimOptions);
                         if (val.Length > 0)
                         {
                             ++index;
-                            parts.Add(simplefilename, 1, $"{dataset} {index}", "String", val);
+                            parts.Add(simplefilename, index, dataset, "String", val);
                         }
                     }
                 }
                 if (parts.PartsList.Count < 1)
                 {
-                    parts.Add(simplefilename, 1, $"{dataset} {index}", "String", comment);  // add comment line if there was no uncommented data in the file
+                    parts.Add(simplefilename, index, dataset, "String", comment);  // add comment line if there was no uncommented data in the file
                 }
             }
             else
             {
-                parts.Add(simplefilename, 1, $"{dataset} {index}", "String", filenotfound);
+                parts.Add(simplefilename, index, dataset, "String", filenotfound);
             }
 
             return parts;
+        }
+
+
+        private static string TrimAsNeeded(string line, string trimOptions)
+        {
+            if (line.Length == 0) return String.Empty;
+            string val;
+            switch (trimOptions.Trim().ToLower())
+            {
+                case "edge":
+                    val = line.Trim();
+                    break;
+                case "all":
+                    val = line.ReduceWhiteSpace();
+                    break;
+                default:
+                    val = line;
+                    break;
+            }
+
+            return val;
         }
 
         // part 2z
