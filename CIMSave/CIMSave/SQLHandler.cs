@@ -196,7 +196,8 @@ namespace CIMSave
         {           // try these queries to see if can find the server id, or create a server id
                     "Select id from [dbo].[Servers] Where NodeName = @server",
                     "Select id from [dbo].[OtherServers] Where ServerName = @server",
-                    "Insert into [dbo].[OtherServers] (ServerName) Values( @server); Select id from [dbo].[OtherServers] Where ServerName = @server"
+                    "Insert into [dbo].[OtherServers] (ServerName) OUTPUT Inserted.ID Values(@server)"
+                    //"Insert into [dbo].[OtherServers] (ServerName) Values( @server); Select id from [dbo].[OtherServers] Where ServerName = @server"
         };
         const string ServerParameter = "server";
         public int ServerID(string serverName)
