@@ -7,6 +7,7 @@ using System.Data.SqlClient;
 using System.Data;
 using System.ComponentModel;
 using System.Reflection;
+using System.Collections.Concurrent;
 
 namespace CIMSave
 {
@@ -189,11 +190,34 @@ namespace CIMSave
             }
         }
 
+        // keep up server name to ID translation, no need to go back to SQL for this bach run.
+        static ConcurrentDictionary<string, int> ServerIDs = new ConcurrentDictionary<string, int>();
+        static string[] xqueryServers = new string[]
+        {           // try these queries to see if can find the server id, or create a server id
+                    "Select id from [dbo].[Servers] Where NodeName = @server",
+                    "Select id from [dbo].[OtherServers] Where ServerName = @server",
+                    "Insert into [dbo].[OtherServers] (ServerName) Values( @server); Select id from [dbo].[OtherServers] Where ServerName = @server"
+        };
+        const string ServerParameter = "server";
         public int ServerID(string serverName)
         {
-            var p = new List<SqlParameter>();
-            p.Add(new SqlParameter("@server", serverName));
-            return DoQuery<int>("Select id from [dbo].[Server] Where NodeName = @server", -1, p);
+            if (ServerIDs.TryGetValue(serverName, out int idCache))
+            {
+                return idCache;
+            }
+            int factor = 1;
+            foreach (var query in xqueryServers)
+            {
+                var serverID = DoQuery<int>(query, -1, ServerParameter, serverName);
+                if (serverID > 0)
+                {
+                    var vServerId = factor * serverID;
+                    ServerIDs.TryAdd(serverName, vServerId); // save serverid, then return it
+                    return vServerId;
+                }
+                factor = -1;
+            }
+            return -1;
         }
 
         public bool FillDT(DataTable dt, string schema, string tableName, string serverName)
@@ -315,6 +339,12 @@ namespace CIMSave
             return dr;
         }
 
+        private T DoQuery<T>(string sqlQuery, T defaultValue, string paramName, string paramValue)
+        {
+            var p = new List<SqlParameter>();
+            p.Add(new SqlParameter($"@{paramName}", paramValue));
+            return DoQuery<T>(sqlQuery, defaultValue, p);
+        }
 
         private T DoQuery<T>(string sqlQuery, T defaultValue, List<SqlParameter> paramList)
         {
