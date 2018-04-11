@@ -61,8 +61,8 @@ namespace DirectorySecurityList
             {
                 var aclstring = GZfileIO.ReadGZtoString(aclfile);
                 var filestring = GZfileIO.ReadGZtoString(filefile);
-                _ACESet = ACLSet.FromJSON(aclstring);
-                directories = CIMDirectoryCollection.FromJSON(filestring);
+                //_ACESet = ACLSet.FromJSON(aclstring);
+                //directories = CIMDirectoryCollection.FromJSON(filestring);
             }
         }
 
