@@ -1,0 +1,33 @@
+{
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "AAATESTDDD": "IIITEST",
+    "iisExpress": {
+      "applicationUrl": "http://localhost:6025/",
+      "sslPort": 0
+    }
+  },
+  "profiles": {
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "AAATESTCC": "CCCTEST",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "AppDirectoryService": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "AAATESTBBB": "BBBTEST",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:6026/"
+    }
+  },
+  "ConnectionStrings": {
+      "AccountingDb": "Data Source=.\\sqlexpress;Initial Catalog=CIMInfo;Integrated Security=True;Pooling=True; Application Name=AppDirectoryService;"
+  }
+}

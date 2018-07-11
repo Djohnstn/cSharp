@@ -14,6 +14,12 @@ using CIMSave;
 
 namespace DirectorySecurityList
 {
+    public class TaskAndFile
+    {
+        public Task task;
+        public string filename;
+    }
+
     public class RecurseDirectory
     {
         //private string[] Builtins = new string[] { "NT AUTHORITY\\", "BUILTIN\\" };
@@ -30,6 +36,10 @@ namespace DirectorySecurityList
         public int HashCallSmall { get; internal set; } = 0;
         public int HashCallHuge { get; internal set; } = 0;
         public int HashCallMedium { get; internal set; } = 0;
+        public int HashTasksCreated { get; internal set; } = 0;
+        public int HashInlineHandled { get; internal set; } = 0;
+
+        private int checksumsDone = 0;  // count the checksums done
 
         public Stopwatch ScanTime { get; internal set; } = new Stopwatch();
         public Stopwatch PendAtEndTime { get; internal set; } = new Stopwatch();
@@ -161,7 +171,9 @@ namespace DirectorySecurityList
         private ACESet _ACESet;
         private ACLSet _ACLSet;
 
-        private ConcurrentBag<Task> driveFileTasks = new ConcurrentBag<Task>();
+
+        //private ConcurrentBag<Task> driveFileTasks = new ConcurrentBag<Task>();
+        private ConcurrentBag<TaskAndFile> driveFileTasks = new ConcurrentBag<TaskAndFile>();
 
         private string _DiskName = String.Empty; 
 
@@ -199,25 +211,28 @@ namespace DirectorySecurityList
             _ACESet = new ACESet();
             _ACLSet = new ACLSet();
             var now = DateTime.Now.ToString("u");
+            string filenames = "";
             Console.WriteLine($"{now} : Disk {_DiskName}, Inventory Start.");
             ScanTime.Start();
             int errorCount = EachFolder(rootDirectory, 0, 0);
             if (driveFileTasks.Count > 0)
             {   // anything hashed?
                 PendAtEndTime.Start();
-                var taskArray = driveFileTasks.Where(x => !x.IsCompleted).ToArray();
-                if (taskArray.Length > 0)
+                var taskAndFileArray = driveFileTasks.Where(x => !x.task.IsCompleted).ToArray(); // toarray to stabilise the list
+                HashPendAtEnd = taskAndFileArray.Length;
+                if (HashPendAtEnd > 0)
                 {   // anything still left to hash?
+                    var taskArray = taskAndFileArray.Select(x => x.task).ToArray(); // get task list to wait on
+                    filenames = String.Join(";", taskAndFileArray.Select(x => x.filename).ToArray());
                     Task.WaitAll(taskArray);    // wait for any file scans to finish!
-                    HashPendAtEnd = taskArray.Length;
                 }
                 PendAtEndTime.Stop();
             }
             ScanTime.Stop();
-            SummaryStatistics(rootDirectory.FullName, errorCount);
+            SummaryStatistics(rootDirectory.FullName, errorCount, filenames);
 
         }
-        private void SummaryStatistics(string dirname, int errorCount)
+        private void SummaryStatistics(string dirname, int errorCount, string filenames)
         {
             const string strFormat3 = "#0.000";
             const string strFormat1 = "#0.0";
@@ -240,8 +255,9 @@ namespace DirectorySecurityList
                     $"Hash exe: Huge: {HashCallHuge} @ {hugesec}s={hugeper}ms/1; " + 
                     $"Medium: {HashCallMedium} @ {medsec}s={medper}ms/1; " + 
                     $"Small: {HashCallSmall} @ {smallsec}s={smallper}ms/1;\n" + 
-                    $"Tiny: {HashCallTiny}; Hashes Pending at scan complete: {HashPendAtEnd}; Pending time: {pendmillis}ms; " +  
-                    $"Other: {othersec}s; Errors: {errorCount}.");
+                    $"Tiny: {HashCallTiny}; Hashes Pending at end: {HashPendAtEnd}; Delay time: {pendmillis}ms;\n" +  
+                    $"Other: {othersec}s; Errors: {errorCount}; Hashes: Tasks: {HashTasksCreated}; Inline: {HashInlineHandled}.");
+            if (filenames.Length > 0) Console.WriteLine($"Delayed files: {filenames}.");
         }
 
         public void Save()
@@ -524,16 +540,24 @@ namespace DirectorySecurityList
                         }
                         if (checksumNeeded)
                         {
+                            checksumsDone++;
                             bool tiny = false;
-                            if (tiny = (fileLength <= 4096))
+                            if (tiny = (fileLength <= 131072))
                             {
                                 HashCallTiny++;
                             }
-
-                            if (tiny && HashCallTiny > 100)
+                            bool forceinline = false;
+                            if (checksumsDone % 10 == 9)
+                            {
+                                // sometimes, check the number of active tasks to force an inline checksum to slow things down
+                                int activeTasks = driveFileTasks.Where(x => !x.task.IsCompleted).Count();
+                                forceinline = (activeTasks > 20); 
+                            }
+                            if ((tiny && HashCallTiny > 100) || forceinline)
                             {
                                 // handle small files inline if there are many tiny files
                                 // don't want to spin off too many Tasks.
+                                HashInlineHandled++;
                                 var thisfileinfo = new CIMFileInfo()
                                 {
                                     Name = fileNameOriginal,
@@ -547,6 +571,7 @@ namespace DirectorySecurityList
                             else
                             {
                                 // spin off task for the long running hash function; or all files -- if not too many tiny files
+                                HashTasksCreated++;
                                 var newTask = Task.Run(() =>
                                 {
                                     var thisfileinfo = new CIMFileInfo()
@@ -560,7 +585,12 @@ namespace DirectorySecurityList
                                     dirinfo.FileList.Add(fileNameOriginal, thisfileinfo);
                                 }
                                 );
-                                driveFileTasks.Add(newTask);    // keep up with these tasks
+                                var taskandfile = new TaskAndFile()
+                                {
+                                    filename = fileNameOriginal,
+                                    task = newTask
+                                };
+                                driveFileTasks.Add(taskandfile);    // keep up with these tasks
                             }
                         }
                         else
@@ -652,66 +682,67 @@ namespace DirectorySecurityList
 
         // http://peterkellner.net/2010/11/24/efficiently-generating-sha256-checksum-for-files-using-csharp/
         // mod by JDJohnston to Fileinfo and base64 string (shorter than hex, exactly same accuracy)
+        // trying out sha512 instead of sha256; supposedly faster on 64 bit os for large hashes, not so sure.
         public string GetChecksum(FileInfo file)
         {
-            const int maxAuditFileLength = 10_000_000; // don't read files above this size .. 99% of exe files < 19_000_000
-            const int datalength = 4_000_000;       // read entirity of files up to this size
+            const int maxAuditFileLength = 20_000_000; // don't read files above this size .. 99% of exe files < 19_000_000
+            const int datalength = 10_000_000;       // read entirity of files up to this size
             const int datahalf = datalength / 2;    // process half that at front and end of file if mediumsize
             const long seekto = -datahalf;
             long fileLength = file.Length;
+            var checksum = new byte[64];
+            //var checksum2 = new byte[32];
+            char readall = '#'; // flag read only partial by #
             if (fileLength <= datalength)
             {   // read entirity of small to medium size files
+                readall = '=';
                 HashCallSmall++;
                 HashTimeSmall.Start();
-                //byte[] foo = File.ReadAllBytes(file.FullName);
                 using (FileStream stream = file.OpenRead()) // this shares with open files, no crash
                 {
-                    var sha = new SHA256Managed();
-                    byte[] checksum = sha.ComputeHash(stream);
-                    HashTimeSmall.Stop();
-                    return Convert.ToBase64String(checksum); //.Replace("=", String.Empty);
+                    using (var sha = new SHA512Managed())
+                    {
+                        checksum = sha.ComputeHash(stream);
+                    }
                 }
+                HashTimeSmall.Stop();
             }
             else if (fileLength > maxAuditFileLength)
             {   // read first region only of huge files
+                var partialFileBytes = new byte[datalength];
                 HashCallHuge++;
                 HashTimeHuge.Start();
-                var partialFileBytes = new byte[datalength];
                 using (FileStream stream = file.OpenRead())
                 {
-                    //var filebytesFirst = new byte[datalength];
-                    //var filebytesEnd = new byte[datalength];
                     stream.Read(partialFileBytes, 0, datalength);
-                    //stream.Read(partialFileBytes, 0, datahalf);
-                    //stream.Seek(seekto, SeekOrigin.End);
-                    //stream.Read(filebytesEnd, datalength, datalength);
-                    //stream.Read(partialFileBytes, datahalf, datahalf);
-                    var sha = new SHA256Managed();
-                    byte[] checksum = sha.ComputeHash(partialFileBytes);
-                    HashTimeHuge.Stop();
-                    return Convert.ToBase64String(checksum).Replace("=", "#");  // use # as marked for partial hash
+                    using (var sha = new SHA512Managed())
+                    {
+                        checksum = sha.ComputeHash(partialFileBytes);
+                    }
                 }
+                HashTimeHuge.Stop();
             }
             else
             {   // read first and last region of medium large files
+                var partialFileBytes = new byte[datalength];
                 HashCallMedium++;
                 HashTimeMedium.Start();
-                var partialFileBytes = new byte[datalength];
                 using (FileStream stream = file.OpenRead())
                 {
-                    //var filebytesFirst = new byte[datalength];
-                    //var filebytesEnd = new byte[datalength];
-                    //stream.Read(filebytesFirst, 0, datalength);
                     stream.Read(partialFileBytes, 0, datahalf);
                     stream.Seek(seekto, SeekOrigin.End);
-                    //stream.Read(filebytesEnd, datalength, datalength);
                     stream.Read(partialFileBytes, datahalf, datahalf);
-                    var sha = new SHA256Managed();
-                    byte[] checksum = sha.ComputeHash(partialFileBytes);
-                    HashTimeMedium.Stop();
-                    return Convert.ToBase64String(checksum).Replace("=", "#");  // use # as marked for partial hash
+                    using (var sha = new SHA512Managed())
+                    {
+                        checksum = sha.ComputeHash(partialFileBytes);
+                    }
                 }
+                HashTimeMedium.Stop();
             }
+            //Buffer.BlockCopy(checksum, 0, checksum2, 0, 32);
+            //return Convert.ToBase64String(checksum2); //.Replace("=", String.Empty);
+            return Convert.ToBase64String(checksum, 0, 32).Replace('=', readall);  // use # as marked for partial hash
+            //return Convert.ToBase64String(checksum2).Replace("=", "#");  // use # as marked for partial hash
         }
 
         public Tuple<int, string, bool> ACLParse(System.IO.DirectoryInfo directoryInfo)

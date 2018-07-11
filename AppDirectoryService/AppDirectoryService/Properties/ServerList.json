@@ -1,0 +1,31 @@
+﻿{
+  "v10": {
+    "ServerList": "v10",
+    "AliasList": {
+      "server1": "databaseserver11",
+      "server2": "databaseserver11",
+      "server3": "databaseserver11",
+      "server4": "databaseserver11",
+      "server5": "databaseserver12",
+      "server6": "databaseserver13",
+      "server7": "databaseserver14",
+      "server8": "databaseserver15",
+      "kafanchan": "kafanchan"
+    }
+  },
+  "v11": {
+    "ServerList": "v11",
+    "ForwardList": {
+      "server1": "databaseserver11",
+      "server2": "databaseserver11",
+      "server3": "databaseserver11",
+      "server4": "databaseserver11",
+      "server5": "databaseserver12",
+      "server6": "databaseserver13",
+      "server7": "databaseserver14",
+      "server8": "databaseserver15",
+      "kafanchan": "kafanchan",
+      "benue": "jos"
+    }
+  }
+}

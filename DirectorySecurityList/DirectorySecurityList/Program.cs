@@ -9,12 +9,15 @@ namespace DirectorySecurityList
         {
             Properties.Settings settings = Properties.Settings.Default;
 
-            var sql = new MsSqlInventory();
-            sql.Inventory();
-            Pause();
-
-            var diskInventory = new DiskInventory(settings);
-            diskInventory.EachDisk();
+            {
+                var sql = new MsSqlInventory();
+                sql.Inventory();
+            }
+            //Pause();
+            {
+                var diskInventory = new DiskInventory(settings);
+                diskInventory.EachDisk();
+            }
 
             Pause();
         }
