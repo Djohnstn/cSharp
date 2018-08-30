@@ -48,19 +48,221 @@ namespace CIMSave
         }
     }
 
+    static class SQLHandlerBase
+    {
+        //private static string _connectionString;
+
+        //public static string ConnectionString { get => _connectionString; set => _connectionString = value; }
+
+        public static T DoQuery<T>(string sqlQuery, T defaultValue, string paramName, string paramValue)
+        {
+            var p = new List<SqlParameter>
+            {
+                new SqlParameter($"@{paramName}", paramValue)
+            };
+            return DoQuery<T>(sqlQuery, defaultValue, p);
+        }
+
+        public static T DoQuery<T>(string sqlQuery, T defaultValue, List<SqlParameter> paramList)
+        {
+            T result = defaultValue;
+            using (SqlConnection con = new SqlConnection(SQLHandler.ConnectionString()))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand(sqlQuery, con))
+                {
+                    foreach (var p in paramList)
+                    {
+                        command.Parameters.Add(p);
+                    }
+                    using (SqlDataReader reader = command.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result = reader.GetFieldValue<T>(0);
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+
+        public static T DoQuery<T>(string sqlQuery, T defaultValue)
+        {
+            T result = defaultValue;
+            using (SqlConnection con = new SqlConnection(SQLHandler.ConnectionString()))
+            {
+                con.Open();
+                using (SqlCommand command = new SqlCommand(sqlQuery, con))
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        result = reader.GetFieldValue<T>(0);
+                    }
+
+                }
+            }
+            return result;
+        }
+
+    }
+
+
+    class Servers
+    {
+
+        // keep up server name to ID translation, no need to go back to SQL for this bach run.
+        static ConcurrentDictionary<string, int> xServerIDs = new ConcurrentDictionary<string, int>();
+        static readonly string[] xqueryServers = new string[]
+        {           // try these queries to see if can find the server id, or create a server id
+                    "Select id from [dbo].[Servers] Where NodeName = @server",
+                    "Select id from [dbo].[OtherServers] Where ServerName = @server",
+                    "Insert into [dbo].[OtherServers] (ServerName) OUTPUT Inserted.ID Values(@server)"
+                    //"Insert into [dbo].[OtherServers] (ServerName) Values( @server); Select id from [dbo].[OtherServers] Where ServerName = @server"
+        };
+        const string ServerParameter = "server";
+        public int ID(string serverName)
+        {
+            if (xServerIDs.TryGetValue(serverName, out int idCache))
+            {
+                return idCache;
+            }
+            int factor = 1;
+            foreach (var query in xqueryServers)
+            {
+                var serverID = SQLHandlerBase.DoQuery<int>(query, -1, ServerParameter, serverName);
+                if (serverID > 0)
+                {
+                    var vServerId = factor * serverID;
+                    xServerIDs.TryAdd(serverName, vServerId); // save serverid, then return it
+                    return vServerId;
+                }
+                factor = -1;
+            }
+            return -1;
+        }
+
+    }
+
+    class Instances
+    {
+        // keep up name to ID translation, no need to go back to SQL for this batch run.
+        static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
+        static readonly string[] xquerys = new string[]
+        {           // try these queries to see if can find the named entity id, or create a named entity id
+                    "Select id from [dbo].[CIM__Instances] Where Identity = @name",
+                    "Insert into [dbo].[CIM__Instances] (Identity) OUTPUT Inserted.ID Values(@name)"
+        };
+        const string NameParameter = "name";
+        public int ID(string Name)
+        {
+            if (xIDs.TryGetValue(Name, out int idCache))
+            {
+                return idCache;
+            }
+            foreach (var query in xquerys)
+            {
+                var id = SQLHandlerBase.DoQuery<int>(query, -1, NameParameter, Name);
+                if (id > 0)
+                {
+                    xIDs.TryAdd(Name, id); // save serverid, then return it
+                    return id;
+                }
+            }
+            return -1;
+        }
+    }
+
+    internal class Paths
+    {
+        // keep up name to ID translation, no need to go back to SQL for this batch run.
+        static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
+        static readonly string[] xquerys = new string[]
+        {           // try these queries to see if can find the named entity id, or create a named entity id
+                    "Select id from [dbo].[CIM__Paths] Where Identity = @name",
+                    "Insert into [dbo].[CIM__Paths] (Identity) OUTPUT Inserted.ID Values(@name)"
+        };
+        const string NameParameter = "name";
+        public int ID(string Name)
+        {
+            if (xIDs.TryGetValue(Name, out int idCache))
+            {
+                return idCache;
+            }
+            foreach (var query in xquerys)
+            {
+                var id = SQLHandlerBase.DoQuery<int>(query, -1, NameParameter, Name);
+                if (id > 0)
+                {
+                    xIDs.TryAdd(Name, id); // save serverid, then return it
+                    return id;
+                }
+            }
+            return -1;
+        }
+    }
+
+    //internal class Lines
+    //{
+    //    // keep up name to ID translation, no need to go back to SQL for this batch run.
+    //    static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
+    //    static readonly string[] xquerys = new string[]
+    //    {           // try these queries to see if can find the named entity id, or create a named entity id
+    //                "Select id from [dbo].[CIM__Lines] Where Identity = @name",
+    //                "Insert into [dbo].[CIM__Lines] (Identity) OUTPUT Inserted.ID Values(@name)"
+    //    };
+    //    const string NameParameter = "name";
+    //    public int ID(string Name)
+    //    {
+    //        if (xIDs.TryGetValue(Name, out int idCache))
+    //        {
+    //            return idCache;
+    //        }
+    //        foreach (var query in xquerys)
+    //        {
+    //            var id = SQLHandlerBase.DoQuery<int>(query, -1, NameParameter, Name);
+    //            if (id > 0)
+    //            {
+    //                xIDs.TryAdd(Name, id); // save serverid, then return it
+    //                return id;
+    //            }
+    //        }
+    //        return -1;
+    //    }
+    //}
+
     class SQLHandler
     {
-        public string ConnectionString { get; set; }
+        private static string _connectionString;
+        public static string ConnectionString()
+        {
+            return _connectionString;
+        }
+        //public string ConnectionString
+        //{
+        //    get => _connectionString;
+        //    //set
+        //    //{
+        //    //    _connectionString = value;
+        //    //    SQLHandlerBase.ConnectionString = value;
+        //    //}
+        //}
         public static int MaxStringLength { get; } = 2000;
         private string lastSchema;
         private string lastTable;
         private bool lastTableExists = false;
         private List<DataRow> lastTableColumns;
 
+        public int ServerID(string servername) => new Servers().ID(servername);
+        public int InstanceID(string instancename) => new Servers().ID(instancename);
+        public int PathID(string pathname) => new Servers().ID(pathname);
+
         public bool TableExists(string schema, string tableName)
         {
             bool exists;
-            if (!(String.IsNullOrWhiteSpace(lastSchema) || String.IsNullOrWhiteSpace(lastTable) )
+            if (!(String.IsNullOrWhiteSpace(lastSchema) || String.IsNullOrWhiteSpace(lastTable))
                  && lastTable.Equals(tableName) && lastSchema.Equals(schema))
             {
                 exists = lastTableExists;
@@ -83,7 +285,7 @@ namespace CIMSave
             }
             return exists;
         }
-         
+
         /// <summary>
         /// find column, determine size of column
         /// </summary>
@@ -96,7 +298,7 @@ namespace CIMSave
 
             //bool exists;
             Int16 length = 0;
-            if (!(String.IsNullOrWhiteSpace(lastSchema) || String.IsNullOrWhiteSpace(lastTable) )
+            if (!(String.IsNullOrWhiteSpace(lastSchema) || String.IsNullOrWhiteSpace(lastTable))
                 && lastTable.Equals(tableName) && lastSchema.Equals(schema))
             {
                 if (null == lastTableColumns)
@@ -115,14 +317,14 @@ namespace CIMSave
             {
             }
 
-            if (lastTableColumns.Count>0)
+            if (lastTableColumns.Count > 0)
             {
                 DataRow dr = lastTableColumns.Find(x => x.Field<string>(0) == colName);
                 if (dr != null)
                 {
                     var typeName = dr.Field<string>(1);
                     var len = dr.Field<Int16>(2);
-                    if (len>0)  // don't half (max) fields...
+                    if (len > 0)  // don't half (max) fields...
                     {
                         if (typeName.Equals("nvarchar") || typeName.Equals("nchar")) len /= 2;
                         length = (Int16)len;
@@ -136,6 +338,10 @@ namespace CIMSave
         public string DTtoSelect(DataTable dt, string schema, string tableName, string serverName)
         {
             int serverId = ServerID(serverName);
+            //bool pathWhere = false;
+            //int pathId = 0;
+            //bool instanceWhere = false;
+            //int instanceId = 0;
             var sb = new StringBuilder();
             sb.AppendLine("Select ");
             string comma = "";
@@ -143,6 +349,8 @@ namespace CIMSave
             {
                 var colName = col.ColumnName;
                 if (colName == "Server") colName = "ServerID";
+                if (colName == "Instance") colName = "InstanceID"; //instanceWhere = true; InstanceID = InstanceID(what?)}
+                if (colName == "Path") colName = "PathID"; //, ...};
                 if (!(colName.StartsWith("_")))
                 {
                     sb.AppendLine($" {comma} [t].[{colName}] ");
@@ -163,73 +371,42 @@ namespace CIMSave
                 var sb = new StringBuilder();
                 foreach (DataColumn col in dt.Columns)
                 {
-                    var colName = col.ColumnName.PadRight(6,' ').Substring(0, 6);
+                    var colName = col.ColumnName.PadRight(6, ' ').Substring(0, 6);
                     sb.Append($"{comma}{colName}~__");
                     if (comma.Length == 0) comma = ",";
                 }
                 sb.Append($"{comma}_Hash_");
-                Console.WriteLine( sb.ToString());
+                Console.WriteLine(sb.ToString());
             }
             foreach (DataRow dr in dt.Rows)
             {
                 comma = "";
                 var sbr = new StringBuilder();
-                foreach(var dc in dr.ItemArray)
+                foreach (var dc in dr.ItemArray)
                 {
                     var rawval = ((dc == null) ? "" : dc.ToString());
-                    var val = rawval.PadRight(6, ' ').Substring(0,6);
+                    var val = rawval.PadRight(6, ' ').Substring(0, 6);
                     sbr.Append($"{comma}{val}~{rawval.Length.ToString("d2")}");
                     if (comma.Length == 0) comma = ",";
                 }
-                string hashString = "";
                 var rid = dr.Field<int>("id");
-                bool hashFound = hashList.TryGetValue(rid, out hashString);
+                bool hashFound = hashList.TryGetValue(rid, out string hashString);
                 sbr.Append($"{comma}{hashString.PadRight(6, ' ').Substring(0, 6)}");
                 Console.WriteLine(sbr.ToString());
                 sbr.Clear();
             }
         }
 
-        // keep up server name to ID translation, no need to go back to SQL for this bach run.
-        static ConcurrentDictionary<string, int> ServerIDs = new ConcurrentDictionary<string, int>();
-        static string[] xqueryServers = new string[]
-        {           // try these queries to see if can find the server id, or create a server id
-                    "Select id from [dbo].[Servers] Where NodeName = @server",
-                    "Select id from [dbo].[OtherServers] Where ServerName = @server",
-                    "Insert into [dbo].[OtherServers] (ServerName) OUTPUT Inserted.ID Values(@server)"
-                    //"Insert into [dbo].[OtherServers] (ServerName) Values( @server); Select id from [dbo].[OtherServers] Where ServerName = @server"
-        };
-        const string ServerParameter = "server";
-        public int ServerID(string serverName)
-        {
-            if (ServerIDs.TryGetValue(serverName, out int idCache))
-            {
-                return idCache;
-            }
-            int factor = 1;
-            foreach (var query in xqueryServers)
-            {
-                var serverID = DoQuery<int>(query, -1, ServerParameter, serverName);
-                if (serverID > 0)
-                {
-                    var vServerId = factor * serverID;
-                    ServerIDs.TryAdd(serverName, vServerId); // save serverid, then return it
-                    return vServerId;
-                }
-                factor = -1;
-            }
-            return -1;
-        }
 
         public bool FillDT(DataTable dt, string schema, string tableName, string serverName)
         {
             string sqlQuery = DTtoSelect(dt, schema, tableName, serverName);
-            using (SqlConnection con = new SqlConnection(ConnectionString))
+            using (SqlConnection con = new SqlConnection(ConnectionString()))
             {
                 con.Open();
                 using (SqlCommand command = new SqlCommand(sqlQuery, con))
                 using (SqlDataAdapter da = new SqlDataAdapter(command))
-                using (DataSet ds = new DataSet() { EnforceConstraints = false }) 
+                using (DataSet ds = new DataSet() { EnforceConstraints = false })
                 {
                     ds.Tables.Add(dt);
                     da.Fill(dt);
@@ -238,7 +415,7 @@ namespace CIMSave
                 }
                 //int updated = dt.Select(null, null, DataViewRowState.ModifiedCurrent).Length;
             }
-            foreach(DataRow row in dt.Rows)
+            foreach (DataRow row in dt.Rows)
             {
                 if (row.HasErrors)
                 {
@@ -259,7 +436,7 @@ namespace CIMSave
             //Console.WriteLine($"Update: [{schema}].[{dt.TableName}] {serverName} rows:{dt.Rows.Count}");
             int recordCount = -1;
             DataTable dtWork = dt.Clone();
-            using (SqlConnection con = new SqlConnection(ConnectionString))
+            using (SqlConnection con = new SqlConnection(ConnectionString()))
             {
                 con.Open();
                 string sqlQuery = DTtoSelect(dt, schema, tableName, serverName);
@@ -272,8 +449,10 @@ namespace CIMSave
                     //var foo = da.TableMappings;
                     da.FillSchema(dtWork, SchemaType.Mapped);
                     SqlCommandBuilder builder = new SqlCommandBuilder(da);
-                    var deleteCmd = new SqlCommand($"DELETE FROM [{schema}].[{tableName}] WHERE [id] = @id", con);
-                    deleteCmd.CommandType = CommandType.Text;
+                    var deleteCmd = new SqlCommand($"DELETE FROM [{schema}].[{tableName}] WHERE [id] = @id", con)
+                    {
+                        CommandType = CommandType.Text
+                    };
                     deleteCmd.Parameters.Add("@id", SqlDbType.Int, 4, "id");
 
                     //da.DeleteCommand = builder.GetDeleteCommand();
@@ -301,7 +480,7 @@ namespace CIMSave
         private List<DataRow> DoQuery(string sqlQuery)
         {
             List<DataRow> dr;
-            using (SqlConnection con = new SqlConnection(ConnectionString))
+            using (SqlConnection con = new SqlConnection(ConnectionString()))
             {
                 con.Open();
                 using (SqlCommand command = new SqlCommand(sqlQuery, con))
@@ -309,7 +488,7 @@ namespace CIMSave
                 {
                     var dt = new DataTable();
                     dt.Load(reader);
-                   dr = dt.AsEnumerable().ToList();
+                    dr = dt.AsEnumerable().ToList();
                 }
             }
             return dr;
@@ -318,7 +497,7 @@ namespace CIMSave
         private List<DataRow> DoQuery(string sqlQuery, List<SqlParameter> paramList)
         {
             List<DataRow> dr;
-            using (SqlConnection con = new SqlConnection(ConnectionString))
+            using (SqlConnection con = new SqlConnection(ConnectionString()))
             {
                 con.Open();
                 using (SqlCommand command = new SqlCommand(sqlQuery, con))
@@ -340,58 +519,6 @@ namespace CIMSave
             return dr;
         }
 
-        private T DoQuery<T>(string sqlQuery, T defaultValue, string paramName, string paramValue)
-        {
-            var p = new List<SqlParameter>();
-            p.Add(new SqlParameter($"@{paramName}", paramValue));
-            return DoQuery<T>(sqlQuery, defaultValue, p);
-        }
-
-        private T DoQuery<T>(string sqlQuery, T defaultValue, List<SqlParameter> paramList)
-        {
-            T result = defaultValue;
-            using (SqlConnection con = new SqlConnection(ConnectionString))
-            {
-                con.Open();
-                using (SqlCommand command = new SqlCommand(sqlQuery, con))
-                {
-                    foreach(var p in paramList)
-                    {
-                        command.Parameters.Add(p);
-                    }
-                    using (SqlDataReader reader = command.ExecuteReader())
-                    {
-                        while (reader.Read())
-                        {
-                            result = reader.GetFieldValue<T>(0);
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-
-        private T DoQuery<T>(string sqlQuery, T defaultValue)
-        {
-            T result = defaultValue;
-            using (SqlConnection con = new SqlConnection(ConnectionString))
-            {
-                con.Open();
-                using (SqlCommand command = new SqlCommand(sqlQuery, con))
-                using (SqlDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
-                    {
-                        result = reader.GetFieldValue<T>(0);
-                    }
-
-                }
-            }
-            return result;
-        }
-
-
         private int DoCommand(string sqlQuery)// string[] { parameters, names})
         {
             int rows = -1;
@@ -401,7 +528,7 @@ namespace CIMSave
             }
             else
             {
-                using (SqlConnection con = new SqlConnection(ConnectionString))
+                using (SqlConnection con = new SqlConnection(ConnectionString()))
                 {
                     con.Open();
 
@@ -421,6 +548,11 @@ namespace CIMSave
         private string newIndexCommand = "";
         private string newTableName = "";
         private string newSchemaName = "";
+
+        public SQLHandler(string connectionString)
+        {
+            _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        }
 
         public bool PrepareTable(string schema, string tableName, int nameLength = 32)
         {
@@ -564,12 +696,12 @@ namespace CIMSave
             }
             else
             {
-                var datatype = columnType.ToString().Remove(0,2);
+                var datatype = columnType.ToString().Remove(0, 2);
 
                 var sql = new StringBuilder();
                 sql.Append(firstParameter ? " " : ", ");    // comma needed?
-                sql.Append( $" [{columnName}] ");
-                sql.Append( datatype); // Utility.GetDescriptionFromEnumValue(columnType);
+                sql.Append($" [{columnName}] ");
+                sql.Append(datatype); // Utility.GetDescriptionFromEnumValue(columnType);
                 if (ColumnType.ctNVarChar == columnType)
                 {
                     var csize = columnSize < 1 ? 50 : columnSize > MaxStringLength ? MaxStringLength : columnSize;
@@ -608,7 +740,7 @@ namespace CIMSave
 
                 var sql = new StringBuilder();
                 sql.AppendLine($" ALTER TABLE [{schema}].[{tableName}] ");
-                sql.Append(" ADD "); 
+                sql.Append(" ADD ");
                 sql.Append($" [{columnName}] ");
                 sql.Append(datatype); // Utility.GetDescriptionFromEnumValue(columnType);
                 if (ColumnType.ctNVarChar == columnType)

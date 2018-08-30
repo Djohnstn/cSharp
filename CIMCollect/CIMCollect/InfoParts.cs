@@ -18,6 +18,16 @@ namespace CIMCollect
     public class InfoPart
     {
         [DataMember]
+        public bool InstanceUsed { get; set; }    // InstanceUsed    -> column "Instance" aka Sql Server partition/Instance
+        [DataMember]
+        public string Instance { get; set; }    // eg part0     -> column "Instance" aka Sql Server partition/Instance
+
+        [DataMember]
+        public bool PathUsed { get; set; }    // PathUsed yes/no     -> column "Path" aka Database or folder path
+        [DataMember]
+        public string Path { get; set; }    // eg part0     -> column "Path" aka Database or folder path
+
+        [DataMember]
         public string Identity { get; set; }    // eg part0     -> column "Name" aka Element
         [DataMember]
         public int Index { get; set; }    // eg 1, 2, 3, ... per named element, keeps names from colliding
@@ -88,6 +98,36 @@ namespace CIMCollect
             {
                 var p = new InfoPart()
                 {
+                    InstanceUsed = false,
+                    Instance = string.Empty,
+                    PathUsed = false,
+                    Path = string.Empty,
+                    Identity = identity,
+                    Index = index,
+                    Name = name,
+                    Type = (type.Equals("String")) ? $"${value.Length}" : type,
+                    Value = value
+                };
+
+                PartsList.Add(p);
+            }
+        }
+
+
+        public void Add(string instance, string path, string identity, int index, string name, string type, string value)
+        {
+            if (null == value)
+            {
+                // bail if sent a null value.
+            }
+            else
+            {
+                var p = new InfoPart()
+                {
+                    InstanceUsed = instance == null ? false : true,
+                    Instance = instance?? string.Empty,
+                    PathUsed = path == null ? false : true,
+                    Path = path ?? string.Empty,
                     Identity = identity,
                     Index = index,
                     Name = name,

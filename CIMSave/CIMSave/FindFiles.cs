@@ -117,7 +117,7 @@ namespace CIMSave
         {
 
             var tableColumns = PartsSizes(fullPartsList);
-            var sQLHandler = new SQLHandler() { ConnectionString = SqlConnectionString };
+            var sQLHandler = new SQLHandler(SqlConnectionString);
             var server = fullPartsList.Server;
             var serverId = sQLHandler.ServerID(server);
             //var schema = "dbo";
@@ -154,10 +154,10 @@ namespace CIMSave
             //SQLHandler.DTtoConsole(fileDt, fileHash, "fileDt");
 
             // delete all sqlDT not in fileDT
-            deleteDTNotInDT(sQLDt, sqlHash, fileDt, fileHash);
+            DeleteDTNotInDT(sQLDt, sqlHash, fileDt, fileHash);
 
             // delete all fileDT that are already in sqlDT
-            deleteDTinDT(fileDt, fileHash, sQLDt, sqlHash);
+            DeleteDTinDT(fileDt, fileHash, sQLDt, sqlHash);
 
             // add all fileDT that are left
             sQLDt.Merge(fileDt, true);
@@ -165,7 +165,7 @@ namespace CIMSave
             return true;
         }
 
-        private bool deleteDTinDT(DataTable dtWithExtra, HashTable hashExtra,
+        private bool DeleteDTinDT(DataTable dtWithExtra, HashTable hashExtra,
             DataTable dtWithBase, HashTable hashBase)
         {
             bool status = true;
@@ -184,7 +184,7 @@ namespace CIMSave
             return status;
         }
 
-        private bool deleteDTNotInDT(DataTable dtWithExtra, HashTable hashExtra,
+        private bool DeleteDTNotInDT(DataTable dtWithExtra, HashTable hashExtra,
                                      DataTable dtWithBase, HashTable hashBase)
         {
             var basename = dtWithBase.TableName;
@@ -264,7 +264,8 @@ namespace CIMSave
                     myRow["ServerId"] = serverId;
                     myRow["Name"] = partID;
                     lastPart = partIndex;
-                }
+                };
+                ??? can we fix it path and instance;
                 var rowCol = myRow[partName];
                 var type = rowCol?.GetType();
                 object foo;
@@ -433,6 +434,8 @@ namespace CIMSave
                         var colType = col.Value.ColType;
                         var ct = sQLHandler.ColTypeStringToEnum(colType);
                         var colLength = col.Value.ColLength;   // max length in table
+                        if (colName.Equals("Path")) { colName = "PathId"; ct = SQLHandler.ColumnType.ctInt; colLength = 4; }
+                        if (colName.Equals("Instance")) { colName = "InstanceId"; ct = SQLHandler.ColumnType.ctInt; colLength = 4; }
                         var newparm1 = sQLHandler.PrepareColumn(colName, ct, colLength);
                         if (!newparm1)
                         {
@@ -462,16 +465,23 @@ namespace CIMSave
             var dt = new DataTable(tableName);
             dt.Columns.Add("id", typeof(int));
             dt.Columns.Add("ServerId", typeof(int));
+            //dt.Columns.Add("InstanceId", typeof(int));
+            //dt.Columns.Add("PathId", typeof(int));
             dt.Columns.Add("Name", typeof(string));
 
             foreach (var part in columnList.Values)
             {
                 var pName = part.ColName;
                 if (pName == "Name") continue;
+                //if (pName == "Instance") continue;
+                //if (pName == "Path") continue;
                 if (pName == "Server") continue;
                 if (pName == "ServerId") continue;
                 var pType = part.ColType;
                 var len = part.ColLength;
+                // JDJ 8-29-2018 - add two special lookups - Path and Instance
+                if (pName.Equals("Path")) { pName = "PathId"; pType = "Int32"; len = 4; }
+                if (pName.Equals("Instance")) { pName = "InstanceId"; pType = "Int32"; len = 4; }
                 bool setMaxLength = false;
                 DataColumn dc = new DataColumn()
                 {

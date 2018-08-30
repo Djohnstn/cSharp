@@ -170,8 +170,10 @@ namespace CIMCollect
             }
             catch (Exception ex)
             {
-                pInfo = new InfoParts();
-                pInfo.Result = ex.Message;
+                pInfo = new InfoParts
+                {
+                    Result = ex.Message
+                };
             }
             return pInfo;
             //return pInfo;

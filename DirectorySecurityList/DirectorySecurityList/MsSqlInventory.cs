@@ -53,6 +53,9 @@ namespace DirectorySecurityList
 
     public class MsSqlTableColumns
     {
+        public string Server { get; set; }
+        public string Name { get; set; } // instance.catalog.schema.table.column
+
         public string TABLE_CATALOG { get; set; }
         public string TABLE_SCHEMA { get; set; }
         public string TABLE_NAME { get; set; }
@@ -74,24 +77,84 @@ namespace DirectorySecurityList
         public string COLLATION_NAME { get; set; }
         public override string ToString()
         {
-            var nn = IS_NULLABLE ? "" : " NOT NULL";
-            return $"{TABLE_CATALOG}.{TABLE_SCHEMA}.{TABLE_NAME}.{COLUMN_NAME} {DATA_TYPE}({CHARACTER_MAXIMUM_LENGTH}{NUMERIC_PRECISION}){nn};";
+            //var nn = IS_NULLABLE ? "" : " NOT NULL";
+            //return $"{TABLE_CATALOG}.{TABLE_SCHEMA}.{TABLE_NAME}.{COLUMN_NAME} {DATA_TYPE}({CHARACTER_MAXIMUM_LENGTH}{NUMERIC_PRECISION}){nn};";
+            return $"{Name} {DATA_TYPE}({CHARACTER_MAXIMUM_LENGTH}{NUMERIC_PRECISION});";
         }
     }
 
+    public class MsSqlServers
+    {
+        public string Server { get; set; }
+        public string Name { get; set; } // server\instance
+        public override string ToString()
+        {
+            return $"{Server} {Name};";
+        }
+    }
+
+    public class MsSqlDatabases
+    {
+        public string Server { get; set; }
+        public string Name { get; set; } // instance.catalog
+
+        public string Instance { get; set; }
+        public string Database { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Server} {Name};";
+        }
+    }
+
+    public class MsSqlTables
+    {
+        public string Server { get; set; }
+        public string Name { get; set; } // instance.catalog.schema.table
+
+        public string Instance { get; set; }
+        public string Database { get; set; }
+        public string Table { get; set; }
+        public int? RecordCount { get; set; }
+        public string Status { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Server} {Name} = {RecordCount}; {Status}";
+        }
+    }
+
+    public class MsSqlStoredProcedure
+    {
+        public string Server { get; set; }
+        public string Name { get; set; } // instance.catalog.schema.procedure
+
+        public string Instance { get; set; }
+        public string Database { get; set; }
+        public string Procedure { get; set; }
+        public string Hash { get; set; }
+        public string Status { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Server} {Name} {Procedure} = {Hash}; {Status}";
+        }
+    }
 
     class MsSqlInventory
     {
 
-        List<string> sqlinstances;
-        List<string> dblist  = new List<string>();
-        List<string> tblist  = new List<string>();
+        List<MsSqlServers> sqlinstances;
+        List<MsSqlDatabases> dblist  = new List<MsSqlDatabases>();
+        List<MsSqlTables> tblist  = new List<MsSqlTables>();
         List<MsSqlTableColumns> columns = new List<MsSqlTableColumns>();
+        List<MsSqlStoredProcedure> procedures = new List<MsSqlStoredProcedure>();
 
         RegistryView registryView = Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32;
 
-        public IEnumerable<string> GetSqlInstanceNames()
+        public IEnumerable<MsSqlServers> GetSqlInstanceNames()
         {
+            var machineName = Environment.MachineName;
             using (RegistryKey hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView))
             {
                 RegistryKey instanceKey = hklm.OpenSubKey(@"SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL", false);
@@ -99,13 +162,18 @@ namespace DirectorySecurityList
                 {
                     foreach (var instanceName in instanceKey.GetValueNames())
                     {
-                        yield return (Environment.MachineName + @"\" + instanceName);
+                        var value = new MsSqlServers()
+                        {
+                            Server = machineName,
+                            Name = $@"{machineName}\{instanceName}"
+                        };
+                        yield return (value); // (machineName + @"\" + instanceName);
                     }
                 }
             }
         }
 
-        public IEnumerable<string> GetSqlDatabases(string instance)
+        public IEnumerable<MsSqlDatabases> GetSqlDatabases(string server, string instance)
         {
             var connection = $"server={instance}; database=master; Integrated Security=SSPI;";
             using (var con = new SqlConnection(connection))
@@ -120,30 +188,100 @@ namespace DirectorySecurityList
                 {
                     while (reader.Read())
                     {
-                        yield return (instance + "." + reader[0].ToString());
+                        var result = new MsSqlDatabases()
+                        {
+                            Server = server,
+                            Instance = instance,
+                            Database = reader[0].ToString()
+                        };
+                        result.Name = $"{instance}.{result.Database}";
+                        yield return (result); // (instance + "." + reader[0].ToString());
                     }
                 }
             }
         }
 
-        public IEnumerable<string> GetSqlDatabaseTables(string database)
+        public int? SqlRecordCount(SqlConnection con, string database, string schema, string table)
         {
-            var db = database.Split('.');
-            var connection = $"server={db[0]}; database={db[1]}; Integrated Security=SSPI;";
-            using (var con = new SqlConnection(connection))
+            int? count = null;
+            string query = $"SELECT COUNT(*) FROM {database}.{schema}.{table};";
+
+            try
             {
-                con.Open();
-                DataTable schema = con.GetSchema("Tables");
-                //List<string> TableNames = new List<string>();
-                foreach (DataRow row in schema.Rows)
+                using (var cmd = new SqlCommand(query, con))
+                using (var reader = cmd.ExecuteReader())
                 {
-                    yield return $"{db[0]}.{row[0]}.{row[1]}.{row[2]}\t{row[3]}";
+                    while (reader.Read())
+                    {
+                        count = reader.GetInt32(0);
+                    }
                 }
             }
+            catch (Exception)
+            {
+                count = -1;
+                //throw;
+            }
+
+            return (count); 
+        }
+
+        public List<MsSqlTables> GetSqlDatabaseTables(string server, string instance, string database)
+        {
+            //var db = database.Split('.');
+            var tables = new List<MsSqlTables>();
+            string tbschema = string.Empty;
+            string table = string.Empty;
+            var connection = $"server={instance}; database={database}; Integrated Security=SSPI;";
+
+            try
+            {
+                using (var con = new SqlConnection(connection))
+                {
+                    con.Open();
+                    DataTable schema = con.GetSchema("Tables");
+                    //List<string> TableNames = new List<string>();
+                    foreach (DataRow row in schema.Rows)
+                    {
+                        // row(0) = database
+                        // row(1) = schema
+                        tbschema = row[1].ToString();
+                        // row(2) = table name
+                        table = row[2].ToString();
+                        // row(3) = table type 
+
+                        var result = new MsSqlTables()
+                        {
+                            Server = server,
+                            Name = $"{instance}.{database}.{tbschema}.{table}",
+                            Instance = instance,
+                            Database = database,
+                            //Table = $"{db[0]}.{row[0]}.{row[1]}.{row[2]}:{row[3]}"
+                            Table = $"{tbschema}.{table}",
+                            RecordCount = SqlRecordCount(con, database, tbschema, table)
+                        };
+                        tables.Add(result);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                var exresult = new MsSqlTables()
+                {
+                    Server = server,
+                    Name = $"{instance}.{database}.{tbschema}.{tbschema}.{table}.$Error",
+                    Instance = instance,
+                    Database = database,
+                    Table = $"{tbschema}.{table}",
+                    Status = ex.Message
+                };
+                tables.Add(exresult);
+            }
+            return (tables);// $"{db[0]}.{row[0]}.{row[1]}.{row[2]}\t{row[3]}";
         }
 
 
-        public IEnumerable<MsSqlTableColumns> GetSqlTableColumns(string database)
+        public IEnumerable<MsSqlTableColumns> GetSqlTableColumns(string server, string instance, string database)
         {
             const string query = @"SELECT TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, 
                                      COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, 
@@ -152,8 +290,8 @@ namespace DirectorySecurityList
                                      CHARACTER_SET_CATALOG, CHARACTER_SET_SCHEMA, CHARACTER_SET_NAME,
                                      COLLATION_CATALOG, COLLATION_SCHEMA, COLLATION_NAME
                                 FROM INFORMATION_SCHEMA.COLUMNS;";
-            var db = database.Split('.');
-            var connection = $"server={db[0]}; database={db[1]}; Integrated Security=SSPI;";
+            //var db = database.Split('.');
+            var connection = $"server={instance}; database={database}; Integrated Security=SSPI;";
             using (var con = new SqlConnection(connection))
             {
                 con.Open();
@@ -165,7 +303,7 @@ namespace DirectorySecurityList
                 {
                     while (reader.Read())
                     {
-                        yield return (new MsSqlTableColumns()
+                        var r = new MsSqlTableColumns()
                         {
                             TABLE_CATALOG = reader.SafeGetString(0),
                             TABLE_SCHEMA = reader.SafeGetString(1),
@@ -186,19 +324,28 @@ namespace DirectorySecurityList
                             COLLATION_CATALOG = reader.SafeGetString(16),
                             COLLATION_SCHEMA = reader.SafeGetString(17),
                             COLLATION_NAME = reader.SafeGetString(18)
-                        });
+                        };
+
+                        r.Server = server;
+                        r.Name = $"{instance}.{r.TABLE_CATALOG}.{r.TABLE_SCHEMA}.{r.TABLE_NAME}.{r.COLUMN_NAME}";
+
+                        yield return (r);
                     }
                 }
             }
         }
 
-        class MsSqlStoredProcedure
+        public IEnumerable<MsSqlTableColumns> GetSqlStoredProcedures(string server, string instance, string database)
         {
 
-        }
+            const string pquery = @"
+Select o.name, o.crdate, o.refdate, c.colid, c.text
+from SysObjects o
+Inner join SysComments c on c.id = o.id
+Where o.xtype = 'P'
+order by o.name, c.colid
+";
 
-        public IEnumerable<MsSqlTableColumns> GetSqlSoredProcedures(string database)
-        {
             const string query = @"SELECT DISTINCT
 	               SCHEMA_NAME(o.schema_id) + '.' + o.name AS Object_Name,
                    o.type_desc,
@@ -252,10 +399,13 @@ namespace DirectorySecurityList
 
         public void Inventory()
         {
-            sqlinstances = GetSqlInstanceNames().ToList<string>();
-            sqlinstances.ForEach(d => { dblist.AddRange(GetSqlDatabases(d).ToList<string>()); });
-            dblist.ForEach(d => { tblist.AddRange(GetSqlDatabaseTables(d).ToList<string>()); });
-            dblist.ForEach(d => { columns.AddRange(GetSqlTableColumns(d).ToList<MsSqlTableColumns>()); });
+            sqlinstances = GetSqlInstanceNames().ToList<MsSqlServers>();
+            sqlinstances.ForEach(d => { dblist.AddRange(GetSqlDatabases(d.Server, d.Name).ToList<MsSqlDatabases>()); });
+            //dblist.ForEach(d => { tblist.AddRange(GetSqlDatabaseTables(d.Server, d.Instance, d.Database).ToList<MsSqlTables>()); });
+            dblist.ForEach(d => { tblist.AddRange(GetSqlDatabaseTables(d.Server, d.Instance, d.Database)); });
+            dblist.ForEach(d => { columns.AddRange(GetSqlTableColumns(d.Server, d.Instance, d.Database).ToList<MsSqlTableColumns>()); });
+
+            //dblist.ForEach(d => { procedures.AddRange(GetSqlStoredProcedures(d.Server, d.Instance, d.Database).ToList<MsSqlTableColumns>()); });
 
 
             var ix = 0;

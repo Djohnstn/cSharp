@@ -5,7 +5,7 @@ using System.Text;
 
 // http://www.blackbeltcoder.com/Articles/net/implementing-vbs-like-operator-in-c
 
-namespace StringIsLike
+namespace StringExtensionsIsLike
 {
     static class StringCompareExtensions
     {
@@ -141,6 +141,13 @@ namespace StringIsLike
             return sb.ToString(0, len);
         }
 
+        // https://stackoverflow.com/questions/4105386/can-maximum-number-of-characters-be-defined-in-c-sharp-format-strings-like-in-c
+        public static string MaxLength(this string input, int length)
+        {
+            if (input == null) return null;
+            return input.Substring(0, Math.Min(length, input.Length));
+        }
+
         public static string NormalizeWhiteSpaceForLoop(string input)
         {
             var src = input.ToCharArray();
@@ -187,7 +194,8 @@ namespace StringIsLike
             //char ch;
             foreach (var ch in str)
             {
-                if (SqlHideThisCharacter(ch)) continue;
+                if (ch == '[' || ch == ']') continue; // hide these sql characters
+                //if (ch.SqlHideThisCharacter()) continue;
                 var isWhitespace = char.IsWhiteSpace(ch);
                 bool wantsWhiteSpace;
                 if (prevIsWhitespace && isWhitespace)
@@ -217,16 +225,81 @@ namespace StringIsLike
             return sb.ToString(0, len); 
         }
 
-        private static char[] _SqlWantsWhiteSpace = { '=', '(', ')', ',', ';', '+' }; 
+        //private static char[] _SqlWantsWhiteSpace = { '=', '(', ')', ',', ';', '+', '.' };
+        //private static HashSet<char> _SqlWantsWhiteSpace = 
+        //    new HashSet<char> { '=', '(', ')', ',', ';', '+', '.' }; 
         private static bool SqlWantsWhiteSpace (this char ch)
         {
-            return (_SqlWantsWhiteSpace.Contains(ch));
+            bool want;
+            switch (ch)
+            {
+                case '=':
+                case '(':
+                case ')':
+                case ',':
+                case ';':
+                case '+':
+                case '.':
+                    want = true;
+                    break;
+                default:
+                    want = false;
+                    break;
+            }
+            return want;
+            //return (_SqlWantsWhiteSpace.Contains(ch));
         }
 
-        private static char[] _SqlHideThisCharacter = { '[', ']' };
+        //private static char[] _SqlHideThisCharacter = { '[', ']' };
+        //private static HashSet<char> _SqlHideThisCharacter = new HashSet<char> { '[', ']' };
         private static bool SqlHideThisCharacter(this char ch)
         {
-            return (_SqlHideThisCharacter.Contains(ch));
+            bool want;
+            switch (ch)
+            {
+                case '[':
+                case ']':
+                    want = true;
+                    break;
+                default:
+                    want = false;
+                    break;
+            }
+            return want;
+            //return (_SqlHideThisCharacter.Contains(ch));
         }
+
+        public static bool IsDigits(this string s)
+        {
+            Boolean value = true;
+            foreach (char c in s.ToCharArray())
+            {
+                value = value && Char.IsDigit(c);
+                if (!value) return false;
+            }
+            return value;
+        }
+
+        public static bool EndsWithDigit(this string s)
+        {
+            if (string.IsNullOrWhiteSpace(s)) return false;
+            char c = Convert.ToChar( s.Substring(s.Length - 1));
+            if (char.IsDigit(c)) return true;
+            return false;
+        }
+
+        //public static int EndsDigit(string s)
+        //{
+        //    Boolean value = true;
+        //    int digitspot = -1;
+        //    var a = s.ToCharArray();
+        //    for (int ix = a.Length - 1; ix >= 0; ix--)
+        //    {
+        //        char c = a[ix];
+        //        value = Char.IsDigit(c);
+        //        if (!value) return false;
+        //    }
+        //    return digitspot;
+        //}
     }
 }

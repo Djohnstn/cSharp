@@ -13,7 +13,7 @@ namespace DirectorySecurityList
                 var sql = new MsSqlInventory();
                 sql.Inventory();
             }
-            //Pause();
+            Pause();
             {
                 var diskInventory = new DiskInventory(settings);
                 diskInventory.EachDisk();
