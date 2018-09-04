@@ -89,7 +89,7 @@ namespace CIMCollect
         }
 
         // part 2a
-        public static bool RunFileQuery(string server, FileSetup fileSetup)
+        private static bool RunFileQuery(string server, FileSetup fileSetup)
         {
             if (String.IsNullOrWhiteSpace(fileSetup.IniFileName)) return false;
             bool result = false;
@@ -116,7 +116,11 @@ namespace CIMCollect
             var filenotfound = fileSetup.FileMissing;
             var comment = fileSetup.CommentMark;
             var infoParts = HandleResults(server, section, nameid, iniName, trimOptions, filenotfound, comment);
-            Parts.PartsList.AddRange(infoParts.PartsList);
+            foreach (var p in infoParts.Parts)
+            {
+                Parts.Parts.Add(p.Key, p.Value);
+            }
+            //Parts.Parts.AddRange(infoParts.Parts);
             return true;
         }
 
@@ -127,6 +131,7 @@ namespace CIMCollect
         {
             var expandedFileName = Environment.ExpandEnvironmentVariables(nameid);
             FileInfo file = new FileInfo(expandedFileName);
+            var filePath = file.DirectoryName;
             var simplefilename = file.Name;
             var parts = new InfoParts(server, "file", DateTime.UtcNow);
             int index = 0;
@@ -143,11 +148,11 @@ namespace CIMCollect
                         if (val.Length > 0)
                         {
                             ++index;
-                            parts.Add(simplefilename, index, dataset, "String", val);
+                            parts.Add(string.Empty, filePath, simplefilename, index, dataset, "String", val);
                         }
                     }
                 }
-                if (parts.PartsList.Count < 1)
+                if (parts.Parts.Count < 1)
                 {
                     parts.Add(simplefilename, index, dataset, "String", comment);  // add comment line if there was no uncommented data in the file
                 }
@@ -185,7 +190,7 @@ namespace CIMCollect
         private static bool ToFile()
         {
             Parts.ToJsonFile(SaveToFolder);
-            var count = Parts.PartsList.Count;
+            var count = Parts.Parts.Count;
             return true; 
         }
 

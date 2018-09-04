@@ -18,7 +18,15 @@ namespace CIMCollect
 
     public class FilePackageWriter
     {
-        private readonly string _filepath; private readonly IEnumerable<string> _contentFilePathList; private string _tempDirectoryPath; public FilePackageWriter(FilePackage filePackage) { _filepath = filePackage.FilePath; _contentFilePathList = filePackage.ContentFilePathList; }
+        private readonly string _filepath;
+        private readonly IEnumerable<string> _contentFilePathList;
+        private string _tempDirectoryPath;
+        public FilePackageWriter(FilePackage filePackage)
+        {
+            _filepath = filePackage.FilePath;
+            _contentFilePathList = filePackage.ContentFilePathList;
+        }
+
         public void GeneratePackage(bool deleteContents)
         {
             try

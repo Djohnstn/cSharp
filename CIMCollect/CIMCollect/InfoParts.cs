@@ -18,16 +18,6 @@ namespace CIMCollect
     public class InfoPart
     {
         [DataMember]
-        public bool InstanceUsed { get; set; }    // InstanceUsed    -> column "Instance" aka Sql Server partition/Instance
-        [DataMember]
-        public string Instance { get; set; }    // eg part0     -> column "Instance" aka Sql Server partition/Instance
-
-        [DataMember]
-        public bool PathUsed { get; set; }    // PathUsed yes/no     -> column "Path" aka Database or folder path
-        [DataMember]
-        public string Path { get; set; }    // eg part0     -> column "Path" aka Database or folder path
-
-        [DataMember]
         public string Identity { get; set; }    // eg part0     -> column "Name" aka Element
         [DataMember]
         public int Index { get; set; }    // eg 1, 2, 3, ... per named element, keeps names from colliding
@@ -37,6 +27,47 @@ namespace CIMCollect
         public string Type { get; set; }        // eg attribute type (string, int32,...)
         [DataMember]
         public string Value { get; set; }       // attribute value
+
+    }
+
+    [DataContract]
+    public class InfoInstance
+    {
+        [DataMember]
+        public string Instance { get; set; }    // eg part0     -> column "Instance" aka Sql Server partition/Instance
+        [DataMember]
+        public string Path { get; set; }    // eg part0     -> column "Path" aka Database or folder path
+
+        //[DataMember]
+        //public List<InfoPart> PartsList;
+
+        public override int GetHashCode()
+        {
+            var hash = ~this.Instance.GetHashCode();    // bitwise not Instance hash
+            hash ^= this.Path.GetHashCode();            // xor with Path hash
+            return hash;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (!(obj is InfoInstance infoInstance))
+            {
+                return false;
+            }
+
+            if (!infoInstance.Instance.Equals(this.Instance))
+            {
+                return false;
+            }
+
+            if (!infoInstance.Path.Equals(this.Path))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
 
     }
 
@@ -51,8 +82,14 @@ namespace CIMCollect
         [DataMember]
         public DateTime AsOf { get; set; }         // eg data collection time 
 
+        //  if Instances and Paths are used, set these flags, maybe not needed
+        //[DataMember]
+        //public bool InstanceUsed { get; set; } = false;    // InstanceUsed -> column "Instance" aka Sql Server partition/Instance
+        //[DataMember]
+        //public bool PathUsed { get; set; } = false;   // PathUsed yes/no   -> column "Path" aka Database or folder path
+
         [DataMember]
-        public List<InfoPart> PartsList;
+        public Dictionary<InfoInstance, List<InfoPart>> Parts;
 
         public string Result { get; set; } = "";
 
@@ -60,7 +97,8 @@ namespace CIMCollect
         {
             Server = server;
             Set = set;
-            PartsList = new List<InfoPart>();
+            AsOf = DateTime.UtcNow;
+            Parts = new Dictionary<InfoInstance, List<InfoPart>>();
         }
 
         public InfoParts(string server, string set, DateTime dateTime)
@@ -68,22 +106,28 @@ namespace CIMCollect
             Server = server;
             Set = set;
             AsOf = dateTime;
-            PartsList = new List<InfoPart>();
+            Parts = new Dictionary<InfoInstance, List<InfoPart>>();
         }
 
         public InfoParts()
         {
             Server = "";
             Set = "";
-            PartsList = new List<InfoPart>();
+            AsOf = DateTime.UtcNow;
+            Parts = new Dictionary<InfoInstance, List<InfoPart>>();
         }
 
         public override string ToString()
         {
             var sb = new StringBuilder();
-            foreach (var p in PartsList)
+            foreach (var id in Parts)
             {
-                sb.AppendLine($"[{Set}]://{Server}/{p.Identity}({p.Index})/{p.Name}({p.Type})={p.Value}");
+                var kInst = id.Key.Instance.Length > 0 ? $"\\{id.Key.Instance}" : String.Empty;
+                var kPath = id.Key.Path.Length > 0 ? $"@{id.Key.Path}" : String.Empty;
+                foreach (var p in id.Value )
+                {   // pseudo url format [table]://server\instance@directory/object(objectnumber)/attributename(type)=value
+                    sb.AppendLine($"[{Set}]://{Server}{kInst}{kPath}/{p.Identity}({p.Index})/{p.Name}({p.Type})={p.Value}");
+                }
             }
             return sb.ToString();
         }
@@ -96,20 +140,21 @@ namespace CIMCollect
             }
             else
             {
-                var p = new InfoPart()
-                {
-                    InstanceUsed = false,
-                    Instance = string.Empty,
-                    PathUsed = false,
-                    Path = string.Empty,
-                    Identity = identity,
-                    Index = index,
-                    Name = name,
-                    Type = (type.Equals("String")) ? $"${value.Length}" : type,
-                    Value = value
-                };
+                this.Add(string.Empty, string.Empty, identity, index, name, type, value);
+                //var p = new InfoPart()
+                //{
+                //    //InstanceUsed = false,
+                //    //Instance = string.Empty,
+                //    //PathUsed = false,
+                //    //Path = string.Empty,
+                //    Identity = identity,
+                //    Index = index,
+                //    Name = name,
+                //    Type = (type.Equals("String")) ? $"${value.Length}" : type,
+                //    Value = value
+                //};
 
-                PartsList.Add(p);
+                //PartsList.Add(p);
             }
         }
 
@@ -122,12 +167,15 @@ namespace CIMCollect
             }
             else
             {
+                //var tinst = instance ?? string.Empty;
+                //var tpath = path ?? string.Empty;
+                var infoinst = new InfoInstance()
+                {
+                    Instance = instance ?? string.Empty,
+                    Path = path ?? string.Empty
+                };
                 var p = new InfoPart()
                 {
-                    InstanceUsed = instance == null ? false : true,
-                    Instance = instance?? string.Empty,
-                    PathUsed = path == null ? false : true,
-                    Path = path ?? string.Empty,
                     Identity = identity,
                     Index = index,
                     Name = name,
@@ -135,7 +183,32 @@ namespace CIMCollect
                     Value = value
                 };
 
-                PartsList.Add(p);
+                if (Parts.TryGetValue(infoinst, out List<InfoPart> partsList))
+                {
+                    partsList.Add(p);
+                }
+                else
+                {
+                    partsList = new List<InfoPart>
+                    {
+                        p
+                    };
+                    Parts.Add(infoinst, partsList);
+
+                }
+
+                // might not need these, CimSave should be able to look at object for multiples or for non-null/non-empty
+                //if (!InstanceUsed)
+                //{
+                //    if (!String.IsNullOrWhiteSpace(instance)) InstanceUsed = true;
+                //}
+
+                //if (!PathUsed)
+                //{
+                //    if (!String.IsNullOrWhiteSpace(path)) PathUsed = true;
+                //}
+
+
             }
         }
 

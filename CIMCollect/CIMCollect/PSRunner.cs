@@ -85,7 +85,7 @@ namespace CIMCollect
             {
                 var result = RunScript(server, dataset, elementid, script);
                 result.ToJsonFile(SaveToFolder);
-                count = result.PartsList.Count;
+                count = result.Parts.Count;
                 rc = true;
             }
             catch (Exception ex)
@@ -180,7 +180,7 @@ namespace CIMCollect
         }
 
 
-        public InfoParts RunScript(string server, string dataset, string nameid, string scriptText)
+        private InfoParts RunScript(string server, string dataset, string nameid, string scriptText)
         {
             if (string.IsNullOrWhiteSpace(server))
             {
@@ -204,7 +204,7 @@ namespace CIMCollect
 
         // may also check this: https://blogs.msdn.microsoft.com/kebab/2014/04/28/executing-powershell-scripts-from-c/
 
-        public Collection<PSObject> RunScript(string scriptText)
+        private Collection<PSObject> RunScript(string scriptText)
         {
             Collection<PSObject> results;
 
@@ -305,7 +305,7 @@ namespace CIMCollect
                             }
                             else if (valtyp.Name.ToLower().StartsWith("byte"))
                             {
-                                val = "Btye[]"; //ConvertArrayToString<UInt64>(prop);
+                                val = "Byte[]"; //ConvertArrayToString<UInt64>(prop);
                             }
                             else if (valtyp.Name.StartsWith("DateTime"))
                             {

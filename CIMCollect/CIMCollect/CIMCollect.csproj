@@ -8,9 +8,10 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>CIMCollect</RootNamespace>
     <AssemblyName>CIMCollect</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -21,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -30,6 +32,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.VisualBasic" />
@@ -53,15 +56,36 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\SipHash\SipHash.cs">
+      <Link>SipHash.cs</Link>
+    </Compile>
     <Compile Include="Collect.cs" />
+    <Compile Include="DirectoryClasses\ACL.cs" />
+    <Compile Include="DirectoryClasses\CimDirectory.cs" />
+    <Compile Include="DirectoryClasses\DiskInventory.cs" />
+    <Compile Include="DirectoryClasses\InventoryToDatabase.cs" />
+    <Compile Include="DirectoryClasses\RecurseDirectory.cs" />
+    <Compile Include="DirectoryRunner.cs" />
     <Compile Include="FilePackage.cs" />
     <Compile Include="FileRunner.cs" />
     <Compile Include="GZfileIO.cs" />
     <Compile Include="InfoParts.cs" />
     <Compile Include="IniFile.cs" />
+    <Compile Include="MSSqlRunner.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
     <Compile Include="PSRunner.cs" />
+    <Compile Include="SqlClasses\Hasher.cs" />
+    <Compile Include="SqlClasses\MemoryZip.cs" />
+    <Compile Include="SqlClasses\MsSqlInventory.cs" />
+    <Compile Include="SqlClasses\SqlAbstract.cs" />
+    <Compile Include="SqlClasses\SqlCleaner.cs" />
+    <Compile Include="SqlClasses\SQLHandler.cs" />
     <Compile Include="SringCompareExtensionsLike.cs" />
     <Compile Include="Utilities.cs" />
   </ItemGroup>
@@ -74,11 +98,16 @@
       <SubType>Designer</SubType>
     </None>
     <None Include="packages.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Content Include="CIMCollect-PowerShell.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -12,12 +12,14 @@ namespace CIMCollect
      /*
      * NLog tutorial suggests to use a static Logger, so here it is
      */
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         static void Main(string[] args)
         {
             var collect = new Collect(); //).AllConfig();
-            collect.AllConfig();
+            collect.SQLCollect();
+            //collect.FileCollect();
+            //collect.AllConfig();
         }
     }
 

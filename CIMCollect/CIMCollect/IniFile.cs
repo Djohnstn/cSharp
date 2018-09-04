@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 //using Microsoft.VisualBasic.CompilerServices; // not meant to be used by user code.  oh well.
-using StringIsLike;
+using StringExtensionsIsLike; //StringIsLike;
 
 
 // https://www.codeproject.com/tips/771772/a-simple-and-efficient-ini-file-reader-in-csharp
@@ -254,15 +254,12 @@ namespace IniFile
         public int GetInteger(string section, string key, int defaultValue = 0,
             int minValue = int.MinValue, int maxValue = int.MaxValue)
         {
-            string stringValue;
-            if (!TryGetValue(section, key, out stringValue))
+            if (!TryGetValue(section, key, out string stringValue))
                 return defaultValue;
 
-            int value;
-            if (!int.TryParse(stringValue, out value))
+            if (!int.TryParse(stringValue, out int value))
             {
-                double dvalue;
-                if (!double.TryParse(stringValue, out dvalue))
+                if (!double.TryParse(stringValue, out double dvalue))
                     return defaultValue;
                 value = (int)dvalue;
             }
@@ -286,12 +283,10 @@ namespace IniFile
         public double GetDouble(string section, string key, double defaultValue = 0,
             double minValue = double.MinValue, double maxValue = double.MaxValue)
         {
-            string stringValue;
-            if (!TryGetValue(section, key, out stringValue))
+            if (!TryGetValue(section, key, out string stringValue))
                 return defaultValue;
 
-            double value;
-            if (!double.TryParse(stringValue, out value))
+            if (!double.TryParse(stringValue, out double value))
                 return defaultValue;
 
             if (value < minValue)
@@ -310,8 +305,7 @@ namespace IniFile
         /// <returns>The value.</returns>
         public bool GetBoolean(string section, string key, bool defaultValue = false)
         {
-            string stringValue;
-            if (!TryGetValue(section, key, out stringValue))
+            if (!TryGetValue(section, key, out string stringValue))
                 return defaultValue;
 
             return (stringValue != "0" && !stringValue.StartsWith("f", true, null));
@@ -326,17 +320,19 @@ namespace IniFile
         /// <seealso cref="GetValue"/>
         public string[] GetAllValues(string section, string key)
         {
-            string key2, key3, value;
+            string key2, key3;
             if (section.StartsWith("["))
                 key2 = String.Format("{0}{1}", section, key).ToLower();
             else
                 key2 = String.Format("[{0}]{1}", section, key).ToLower();
 
-            if (!dictionary.TryGetValue(key2, out value))
+            if (!dictionary.TryGetValue(key2, out string value))
                 return null;
 
-            List <string> values = new List<string> ();
-            values.Add(value);
+            List<string> values = new List<string>
+            {
+                value
+            };
             int index = 1;
             while (true)
             {

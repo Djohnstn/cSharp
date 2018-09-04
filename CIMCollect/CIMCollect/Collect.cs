@@ -8,11 +8,25 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using IniFile;
+using DirectorySecurityList;
 
 namespace CIMCollect
 {
     class Collect
     {
+        public Collect()
+        {
+            var versionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetEntryAssembly().Location);
+            var companyName = versionInfo.CompanyName;
+            var productName = versionInfo.ProductName;
+            string codebase = Assembly.GetExecutingAssembly().CodeBase;
+
+            SaveToFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                                        companyName, productName,
+                                        Path.GetFileNameWithoutExtension(codebase));
+            if (!System.IO.Directory.Exists(SaveToFolder)) Directory.CreateDirectory(SaveToFolder);
+        }
+
         //private bool FirstFileCall = true;
 
         public string SaveToFolder { get; set; } = "";
@@ -24,16 +38,7 @@ namespace CIMCollect
             var server = Environment.MachineName;
             long fileMilliSeconds = 0;
             long totalMilliSeconds = 0;
-            var versionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetEntryAssembly().Location);
-            var companyName = versionInfo.CompanyName;
-            var productName = versionInfo.ProductName;
 
-            string codebase = Assembly.GetExecutingAssembly().CodeBase;
-
-            SaveToFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                                        companyName, productName,
-                                        Path.GetFileNameWithoutExtension(codebase));
-            if (!System.IO.Directory.Exists(SaveToFolder)) Directory.CreateDirectory(SaveToFolder);
 
             foreach (var filename 
                         in Directory.EnumerateFiles(".", 
@@ -61,6 +66,18 @@ namespace CIMCollect
             Utilities.SemiPause("Press any key to exit.", 30);
         }
 
+        internal void FileCollect()
+        {
+            var settings = Properties.Settings.Default;
+            var diskInventory = new DiskInventory(settings, SaveToFolder);
+            diskInventory.EachDisk();
+        }
+
+        internal void SQLCollect()
+        {
+            var sql = new MsSqlInventory();
+            sql.Inventory(SaveToFolder);
+        }
 
         private void EachPowerShellSection(ref int collections, string server, ref long fileMilliSeconds, string filename, IniFile.IniFile ini)
         {
