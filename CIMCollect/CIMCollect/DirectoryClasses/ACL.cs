@@ -8,6 +8,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Globalization;
 using System.Collections.Concurrent;
+using CIMSave;
 
 namespace DirectorySecurityList
 {
@@ -393,8 +394,10 @@ namespace DirectorySecurityList
         //[DataMember]
         //public List<ACE> acl = null;
         [DataMember]
-        private SortedList<int, ACE> list = new SortedList<int, ACE>();
+        public SortedList<int, ACE> list = new SortedList<int, ACE>();
         private int hash = 0;
+        //private ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
+
         public void Add(ACE ace, int id)
         {
             if (hash != 0) throw new Exception("ACL.Add(,) not allowed after Seal().");
@@ -503,9 +506,60 @@ namespace DirectorySecurityList
         //    return json;
         //}
 
+        //public string ToJSON()
+        //{
+        //    locker.EnterReadLock();
+        //    try
+        //    {
+        //        return _UnsafeToJSON();
+        //    }
+        //    catch (Exception)
+        //    {
+        //        throw;
+        //    }
+        //    finally
+        //    {
+        //        locker.ExitReadLock();
+        //    }
+        //}
 
-    }
-    public class ACLComparer : IComparer<ACL>
+        //private string _UnsafeToJSON()
+        //{
+        //    System.Diagnostics.Debug.Assert(locker.IsReadLockHeld || locker.IsUpgradeableReadLockHeld);
+        //    string json;
+        //    var currentCulture = Thread.CurrentThread.CurrentCulture;
+        //    try
+        //    {
+        //        Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+        //        DataContractJsonSerializer js = new DataContractJsonSerializer(typeof(ACLSet));
+        //        using (MemoryStream ms = new MemoryStream())
+        //        {
+        //            js.WriteObject(ms, this);
+        //            ms.Position = 0;
+        //            using (StreamReader sr = new StreamReader(ms))
+        //            {
+        //                json = sr.ReadToEnd();
+        //            }
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        json = ex.Message;
+        //    }
+        //    finally
+        //    {
+        //        Thread.CurrentThread.CurrentCulture = currentCulture;
+        //    }
+        //    return json;
+        //}
+
+        //public static ACLSet FromJSON(string jsonfilename)
+        //{
+        //    return GZfileIO.ReadGZtoJson<ACLSet>(jsonfilename);
+        //}
+
+        }
+        public class ACLComparer : IComparer<ACL>
     {
         public int Compare(ACL x, ACL y)
         {
@@ -632,6 +686,7 @@ namespace DirectorySecurityList
                 locker.ExitReadLock();
             }
         }
+
         private string _UnsafeToJSON()
         {
             System.Diagnostics.Debug.Assert(locker.IsReadLockHeld || locker.IsUpgradeableReadLockHeld);
@@ -662,7 +717,76 @@ namespace DirectorySecurityList
             return json;
         }
 
+        public static ACLSet FromJSON(string jsonfilename)
+        {
+            return GZfileIO.ReadGZtoJson<ACLSet>(jsonfilename);
+            //var json = GZfileIO.ReadGZtoString(jsonfilename);
+            
+            ////var deserializer = new JavaScriptSerializer
 
+            //var deserializer = new DataContractJsonSerializer(typeof(ACLSet));
+            //return (ACLSet)deserializer.ReadObject(json);
+
+            //using (var sr = new FileStream(jsonfilename, FileMode.Open, FileAccess.Read))
+            //{
+            //    var deserializer = new DataContractJsonSerializer(typeof(ACLSet));
+            //    return (ACLSet)deserializer.ReadObject(sr);
+            //}
+        }
+
+        private Dictionary<int, int> JsonACLIDtoDBID = new Dictionary<int, int>();
+        public int ToDB(string connectionString)
+        {
+            int records = 0;
+
+            foreach(var idAcl in idList)
+            {
+                var idNumber = idAcl.Key;
+                int ix = 0;
+                int aCLdbId = this.ACLdbId(idAcl.Value);
+                throw new NotImplementedException(ix.ToString());
+            }
+
+            return records;
+        }
+        private int ACLdbId(ACL aCL)
+        {
+            foreach (var x in aCL.list)
+            {
+                var id = x.Key;
+                int aCEdbId = this.ACEdbId(x.Value);
+            }
+            return 0;
+        }
+
+        private int ACEdbId(ACE value)
+        {
+            var pName = value.PrincipalName;
+            var pSID = value.PrincipalSID;
+            var rights = value.Rights;
+
+            var pNameID = PrincipalID(pName, pSID);
+            var rightsID = RightsID(rights);
+
+            var aceID = AceDBID(pNameID, rightsID);
+            return aceID;
+        }
+
+        private int AceDBID(object pNameID, object rightsID)
+        {
+            throw new NotImplementedException();
+        }
+
+        private int RightsID(FileSystemRights rights)
+        {
+            var description = rights.ToString();
+            throw new NotImplementedException();
+        }
+
+        private int PrincipalID(string pName, string pSID)
+        {
+            throw new NotImplementedException();
+        }
 
     }
 }

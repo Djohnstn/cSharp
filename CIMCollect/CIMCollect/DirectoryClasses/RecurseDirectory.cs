@@ -175,7 +175,8 @@ namespace DirectorySecurityList
         //private ConcurrentBag<Task> driveFileTasks = new ConcurrentBag<Task>();
         private ConcurrentBag<TaskAndFile> driveFileTasks = new ConcurrentBag<TaskAndFile>();
 
-        private string _DiskName = String.Empty; 
+        private string _DiskName = String.Empty;
+        private readonly string SaveToFolder = string.Empty;
 
         private CIMDirectoryCollection directories = new CIMDirectoryCollection();
 
@@ -197,12 +198,14 @@ namespace DirectorySecurityList
         public RecurseDirectory(StringCollection ignoreFolders, 
                                 StringCollection ignoreFilesInFolders,
                                 StringCollection ignoreFilesOfType, 
-                                StringCollection auditFilesOfType)
+                                StringCollection auditFilesOfType,
+                                string saveToFolder)
         {
             TryAdd(IgnoreFolders, ignoreFolders);
             TryAdd(IgnoreFilesInFolders, ignoreFilesInFolders);
             TryAdd(IgnoreFilesOfType, ignoreFilesOfType);
             TryAdd(AuditFilesOfType, auditFilesOfType);
+            SaveToFolder = saveToFolder;
         }
 
         public void RootFolder(DirectoryInfo rootDirectory)
@@ -263,20 +266,34 @@ namespace DirectorySecurityList
         public void Save()
         {
             var machine = Environment.MachineName;
-            var driveID = _DiskName.Replace(Path.DirectorySeparatorChar.ToString(), "").Replace(":","");
-            var filePath = "DiskInventory";
+            var driveID = _DiskName.Replace(Path.DirectorySeparatorChar.ToString(), "").Replace(":", "");
+            var filePath = SaveToFolder; // "DiskInventory";
             if (!Directory.Exists(filePath)) Directory.CreateDirectory(filePath);
-            var filePrefix = $"{filePath}{Path.DirectorySeparatorChar}{machine}_Disk_{driveID}_";
-            {
-                var acls = _ACLSet.ToJSON();
-                GZfileIO.WriteStringToGZ($"{filePrefix}Acls.js", acls);
-                GZfileIO.WriteStringToGZ($"{filePrefix}Acls.js.gz", acls);
-            }
-            {
-                var dirs = directories.ToJSON();
-                GZfileIO.WriteStringToGZ($"{filePrefix}Files.js", dirs);
-                GZfileIO.WriteStringToGZ($"{filePrefix}Files.js.gz", dirs);
-            }
+            //var filePrefix = $"{filePath}{Path.DirectorySeparatorChar}{machine}_Disk_{driveID}_";
+            var filePrefix = Path.Combine(filePath, $"{machine}_Disk_{driveID}_");
+            SaveACEs(filePrefix);
+            SaveACLs(filePrefix);
+            SaveDirectories(filePrefix);
+        }
+
+        private void SaveDirectories(string filePrefix)
+        {
+            var dirs = directories.ToJSON();
+            GZfileIO.WriteStringToGZ($"{filePrefix}Files.Json", dirs);
+            GZfileIO.WriteStringToGZ($"{filePrefix}Files.Json.gz", dirs);
+        }
+
+        private void SaveACLs(string filePrefix)
+        {
+            var acls = _ACLSet.ToJSON();
+            GZfileIO.WriteStringToGZ($"{filePrefix}Acls.Json", acls);
+            GZfileIO.WriteStringToGZ($"{filePrefix}Acls.Json.gz", acls);
+        }
+        private void SaveACEs(string filePrefix)
+        {
+            var aces = _ACESet.ToJSON();
+            GZfileIO.WriteStringToGZ($"{filePrefix}Aces.Json", aces);
+            GZfileIO.WriteStringToGZ($"{filePrefix}Aces.Json.gz", aces);
         }
 
         private int EachFolder(System.IO.DirectoryInfo dir, int depth, int parentAcl)

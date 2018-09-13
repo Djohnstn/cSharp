@@ -6,9 +6,8 @@
 //using IniFile;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
-using IniFile;
 using DirectorySecurityList;
+using CIMSave;
 
 namespace CIMCollect
 {
@@ -16,16 +15,11 @@ namespace CIMCollect
     {
         public Collect()
         {
-            var versionInfo = FileVersionInfo.GetVersionInfo(Assembly.GetEntryAssembly().Location);
-            var companyName = versionInfo.CompanyName;
-            var productName = versionInfo.ProductName;
-            string codebase = Assembly.GetExecutingAssembly().CodeBase;
-
-            SaveToFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                                        companyName, productName,
-                                        Path.GetFileNameWithoutExtension(codebase));
+            string savefolder = GZfileIO.GetSaveFolderName();
+            SaveToFolder = savefolder;
             if (!System.IO.Directory.Exists(SaveToFolder)) Directory.CreateDirectory(SaveToFolder);
         }
+
 
         //private bool FirstFileCall = true;
 

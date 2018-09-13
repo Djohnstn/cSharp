@@ -6,6 +6,7 @@ using System.Globalization;
 using System.Threading;
 using System.IO;
 using System.Collections.Concurrent;
+using CIMSave;
 
 namespace DirectorySecurityList
 {
@@ -113,7 +114,10 @@ namespace DirectorySecurityList
             }
             return json;
         }
+
+        public static CIMDirectoryCollection FromJSON(string jsonfilename)
+        {
+            return GZfileIO.ReadGZtoJson<CIMDirectoryCollection>(jsonfilename);
+        }
     }
-
-
 }

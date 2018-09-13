@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using DirectorySecurityList;
 
 namespace CIMCollect
 {
@@ -16,10 +17,18 @@ namespace CIMCollect
 
         static void Main(string[] args)
         {
-            var collect = new Collect(); //).AllConfig();
-            collect.SQLCollect();
+            Test();
+
+            //var collect = new Collect(); //).AllConfig();
+            //collect.SQLCollect();
             //collect.FileCollect();
             //collect.AllConfig();
+        }
+
+        static void Test()
+        {
+            var t = new InventoryToDatabase();
+            t.FindFiles();
         }
     }
 
