@@ -464,6 +464,7 @@ namespace DirectorySecurityList
                 p.Add(s.Instance, s.Path, s.Name, ix, "SpLength", "Int32", s.SpLength.ToString());
                 p.Add(s.Instance, s.Path, s.Name, ix, "HasASCII", "Boolean", s.HasASCII.ToString());
                 p.Add(s.Instance, s.Path, s.Name, ix, "Hash", "String", s.Hash);
+                p.Add(s.Instance, s.Path, s.Name, ix, "Synopsis", "String", s.Hash);
                 p.Add(s.Instance, s.Path, s.Name, ix, "Abstract", "String", s.Abstract);
                 p.Add(s.Instance, s.Path, s.Name, ix, "Status", "String", s.Status);
             }
@@ -553,20 +554,27 @@ namespace DirectorySecurityList
 
         public void Inventory(string saveToFolder)
         {
+            Console.WriteLine($"{Collect.LogTime()} Begin MsSqlInventory::...");
+
             sqlinstances = MsSqlServers.GetSqlInstanceNames().ToList<MsSqlServers>();
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlInstanceNames]");
             sqlinstances.ForEach(d => { dblist
                                         .AddRange(MsSqlDatabases.GetSqlDatabases(d.Server, d.Name)
                                         .ToList<MsSqlDatabases>()); });
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabases]");
             //dblist.ForEach(d => { tblist.AddRange(GetSqlDatabaseTables(d.Server, d.Instance, d.Database).ToList<MsSqlTables>()); });
             dblist.ForEach(d => { tblist
                                     .AddRange(MsSqlTables.GetSqlDatabaseTables(d.Server, d.Instance, d.Name)); });
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabaseTables]");
             dblist.ForEach(d => { columns
                                     .AddRange(MsSqlTableColumns.GetSqlTableColumns(d.Server, d.Instance, d.Name)
                                     .ToList<MsSqlTableColumns>()); });
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlTableColumns]");
 
             dblist.ForEach(d => { procedures
                                     .AddRange(MsSqlStoredProcedure.GetSqlStoredProcedures(d.Server, d.Instance, d.Name)
                                     .ToList<MsSqlStoredProcedure>()); });
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlStoredProcedures]");
 
             var InventoryFolder = saveToFolder;
             MsSqlServers.ToJsonFile(sqlinstances, InventoryTime, InventoryFolder);
@@ -574,6 +582,7 @@ namespace DirectorySecurityList
             MsSqlTables.ToJsonFile(tblist, InventoryTime, InventoryFolder);
             MsSqlTableColumns.ToJsonFile(columns, InventoryTime, InventoryFolder);
             MsSqlStoredProcedure.ToJsonFile(procedures, InventoryTime, InventoryFolder);
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[ToJsonFile]");
 
             //var ix = 0;
         }

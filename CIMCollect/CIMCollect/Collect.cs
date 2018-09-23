@@ -114,7 +114,7 @@ namespace CIMCollect
         }
 
 
-        private string LogTime()
+        public static string LogTime()
         {
             return DateTime.Now.ToString("u");
         }
