@@ -10,13 +10,18 @@ namespace CIMSave
 {
     class InfoPartsToDB
     {
-        public string SqlConnectionString { get; set; }
+        //public string SqlConnectionString { get; set; }
         public string TablePrefix { get; set; }
         private int Breakspot { get; set; } = 0;    // just here to be a breakpoint without the compiler complaining
 
-        public InfoPartsToDB(string connectionString, string prefix)
+        //public InfoPartsToDB(string connectionString, string prefix)
+        //{
+        //    SqlConnectionString = connectionString;
+        //    TablePrefix = prefix;
+        //}
+        public InfoPartsToDB(string prefix)
         {
-            SqlConnectionString = connectionString;
+            //SqlConnectionString = connectionString;
             TablePrefix = prefix;
         }
 
@@ -32,7 +37,8 @@ namespace CIMSave
         {
 
             var tableColumns = PartsSizes(fullPartsList);
-            var sQLHandler = new SQLHandler(SqlConnectionString);
+            //var sQLHandler = new SQLHandler(SqlConnectionString);
+            var sQLHandler = new SQLHandler();
             var server = fullPartsList.Server;
             var serverId = sQLHandler.ServerID(server);
             //var schema = "dbo";
@@ -153,55 +159,64 @@ namespace CIMSave
         {
             int lastPart = -1;
             DataRow myRow = null;
-            foreach (InfoPart part in fullPartsList.PartsList)
+            //  foreach (InfoPart part in fullPartsList.PartsList)
+            foreach (var section in fullPartsList.Parts)
             {
-                var partID = part.Identity;     // Name column
-                var partIndex = part.Index;     // part - different numbers in case of collision of name
-                var partName = part.Name;       // column name
-                var partType = part.Type;       // column type
-                var partValue = part.Value;     // column value
-                if (partIndex == lastPart)
+                var instancePath = section.Key;
+                var instance = instancePath.Instance;
+                var instanceId = Instances.ID(instance);
+                var path = instancePath.Path;
+                var pathId = Paths.ID(path);
+                foreach (InfoPart part in section.Value)       //fullPartsList.)
                 {
-                    // not new row
-                }
-                else
-                {
-                    // save previous row
-                    if (myRow != null)
+                    var partID = part.Identity;     // Name column
+                    var partIndex = part.Index;     // part - different numbers in case of collision of name
+                    var partName = part.Name;       // column name
+                    var partType = part.Type;       // column type
+                    var partValue = part.Value;     // column value
+                    if (partIndex == lastPart)
                     {
-                        myRow.EndEdit();
-                        fileDt.Rows.Add(myRow);
+                        // not new row
                     }
-                    // new row
-                    myRow = fileDt.NewRow();
-                    myRow.BeginEdit();
-                    myRow["id"] = partIndex;    // hope this is it... NOT IT!!!
-                    myRow["ServerId"] = serverId;
-                    myRow["Name"] = partID;
-                    lastPart = partIndex;
-                };
+                    else
+                    {
+                        // save previous row
+                        if (myRow != null)
+                        {
+                            myRow.EndEdit();
+                            fileDt.Rows.Add(myRow);
+                        }
+                        // new row
+                        myRow = fileDt.NewRow();
+                        myRow.BeginEdit();
+                        myRow["id"] = partIndex;    // hope this is it... NOT IT!!!
+                        myRow["ServerId"] = serverId;
+                        myRow["Name"] = partID;
+                        lastPart = partIndex;
+                    };
 
-                throw new NotImplementedException("??? can we fix it path and instance");
+                    //throw new NotImplementedException("??? can we fix it path and instance");
 
-                var rowCol = myRow[partName];
-                var type = rowCol?.GetType();
-                object foo;
-                if (partType.StartsWith("UInt"))
-                {   // may have to fix this to Int
-                    foo = GetStringIntforUInt(partType, partValue);
+                    var rowCol = myRow[partName];
+                    var type = rowCol?.GetType();
+                    object foo;
+                    if (partType.StartsWith("UInt"))
+                    {   // may have to fix this to Int
+                        foo = GetStringIntforUInt(partType, partValue);
+                    }
+                    else
+                    {
+                        foo = partValue.Left(SQLHandler.MaxStringLength);
+                    }
+                    myRow[partName] = foo;
+
                 }
-                else
-                {
-                    foo = partValue.Left(SQLHandler.MaxStringLength);
-                }
-                myRow[partName] = foo;
-
-            }
             // save previous row
-            if (myRow != null)
-            {
-                myRow.EndEdit();
-                fileDt.Rows.Add(myRow);
+                if (myRow != null)
+                {
+                    myRow.EndEdit();
+                    fileDt.Rows.Add(myRow);
+                }
             }
             return true;
         }
@@ -264,11 +279,11 @@ namespace CIMSave
             return (newValue.Length > 0) ? newValue : partValue;
         }
 
-        private T Caster<T>(object foo)
-        {
-            T result = (T)foo;
-            return result;
-        }
+        //private T Caster<T>(object foo)
+        //{
+        //    T result = (T)foo;
+        //    return result;
+        //}
 
         private DataTable PrepareSQLDT(DataTable fileDt)
         {
@@ -382,8 +397,8 @@ namespace CIMSave
             var dt = new DataTable(tableName);
             dt.Columns.Add("id", typeof(int));
             dt.Columns.Add("ServerId", typeof(int));
-            //dt.Columns.Add("InstanceId", typeof(int));
-            //dt.Columns.Add("PathId", typeof(int));
+            dt.Columns.Add("InstanceId", typeof(int));
+            dt.Columns.Add("PathId", typeof(int));
             dt.Columns.Add("Name", typeof(string));
 
             foreach (var part in columnList.Values)
@@ -436,95 +451,105 @@ namespace CIMSave
         {
             var tableColumns = new SortedDictionary<string, TableColumn>();
             int identityLength = 1;
-            foreach (var part in fullPartsList.PartsList)
+            // -----------
+
+            foreach (var section in fullPartsList.Parts)
             {
-                int iLen = part.Identity.Length;
-                if (identityLength < iLen) identityLength = iLen;
-                var pName = part.Name;
-                var pType = part.Type;
-                var len = 0;
-                if (pType.EndsWith("[]"))
+                var instancePath = section.Key;
+                var instance = instancePath.Instance;
+                var path = instancePath.Path;
+
+                // ----------------
+                foreach (var part in section.Value)
                 {
-                    pType = "String";
-                    len = part.Value.Length;
-                }
-                else if (pType.StartsWith("$"))
-                {
-                    bool ok = int.TryParse(pType.Remove(0, 1), out len);
-                    if (ok)
+                    int iLen = part.Identity.Length;
+                    if (identityLength < iLen) identityLength = iLen;
+                    var pName = part.Name;
+                    var pType = part.Type;
+                    var len = 0;
+                    if (pType.EndsWith("[]"))
                     {
+                        pType = "String";
+                        len = part.Value.Length;
+                    }
+                    else if (pType.StartsWith("$"))
+                    {
+                        bool ok = int.TryParse(pType.Remove(0, 1), out len);
+                        if (ok)
+                        {
+                            pType = "String";
+                        }
+                        else
+                        {
+                            len = 0;
+                        }
+                    }
+                    else if (pType.Equals("Byte"))
+                    {
+                        len = 1;
+                    }
+                    else if (pType.Equals("Boolean"))
+                    {
+                        len = 1;
+                    }
+                    else if (pType.Equals("UInt16"))
+                    {
+                        len = 2;
+                    }
+                    else if (pType.Equals("UInt32"))
+                    {
+                        len = 4;
+                    }
+                    else if (pType.Equals("UInt64"))
+                    {
+                        len = 8;
+                    }
+                    else if (pType.Equals("Int16"))
+                    {
+                        len = 2;
+                    }
+                    else if (pType.Equals("Int32"))
+                    {
+                        len = 4;
+                    }
+                    else if (pType.Equals("Int64"))
+                    {
+                        len = 8;
+                    }
+                    else if (pType.Equals("DateTime"))
+                    {
+                        len = 8;
+                    }
+                    else if (pType.Equals("Microsoft.PowerShell.Cmdletization.GeneratedTypes.ScheduledTask.StateEnum"))
+                    {
+                        len = part.Value.Length;
                         pType = "String";
                     }
                     else
                     {
-                        len = 0;
+                        len = part.Value.Length;
+                        Console.WriteLine($"Unexpected Type on: {part.Identity}, Part: {pName}, Type: {pType} set to String. Length {len}");
+                        pType = "String";
+                        //throw new EvaluateException($"Unhandled Type: {pType}");
                     }
-                }
-                else if (pType.Equals("Byte"))
-                {
-                    len = 1;
-                }
-                else if (pType.Equals("Boolean"))
-                {
-                    len = 1;
-                }
-                else if (pType.Equals("UInt16"))
-                {
-                    len = 2;
-                }
-                else if (pType.Equals("UInt32"))
-                {
-                    len = 4;
-                }
-                else if (pType.Equals("UInt64"))
-                {
-                    len = 8;
-                }
-                else if (pType.Equals("Int16"))
-                {
-                    len = 2;
-                }
-                else if (pType.Equals("Int32"))
-                {
-                    len = 4;
-                }
-                else if (pType.Equals("Int64"))
-                {
-                    len = 8;
-                }
-                else if (pType.Equals("DateTime"))
-                {
-                    len = 8;
-                }
-                else if (pType.Equals("Microsoft.PowerShell.Cmdletization.GeneratedTypes.ScheduledTask.StateEnum"))
-                {
-                    len = part.Value.Length;
-                    pType = "String";
-                }
-                else
-                {
-                    len = part.Value.Length;
-                    Console.WriteLine($"Unexpected Type on: {part.Identity}, Part: {pName}, Type: {pType} set to String. Length {len}");
-                    pType = "String";
-                    //throw new EvaluateException($"Unhandled Type: {pType}");
-                }
-                var found = tableColumns.TryGetValue(pName, out TableColumn tc);
-                if (found)
-                {
-                    if (tc.ColLength < len)
+                    var found = tableColumns.TryGetValue(pName, out TableColumn tc);
+                    if (found)
                     {
-                        tc.ColLength = len;
+                        if (tc.ColLength < len)
+                        {
+                            tc.ColLength = len;
+                        }
                     }
-                }
-                else
-                {
-                    var newtc = new TableColumn()
+                    else
                     {
-                        ColName = pName,
-                        ColType = pType,
-                        ColLength = len
-                    };
-                    tableColumns.Add(pName, newtc);
+                        var newtc = new TableColumn()
+                        {
+                            ColName = pName,
+                            ColType = pType,
+                            ColLength = len
+                        };
+                        tableColumns.Add(pName, newtc);
+                    }
                 }
             }
             // fix up Name field length from Identity part of infoPart
@@ -548,8 +573,35 @@ namespace CIMSave
                     tableColumns.Add("Name", newtc);
                 }
             }
+            ValidateIDColumn(tableColumns, "InstanceID");
+            ValidateIDColumn(tableColumns, "PathID");
+
             return tableColumns;
 
+        }
+
+        private void ValidateIDColumn(SortedDictionary<string, TableColumn> tableColumns, string idName)
+        {
+            // fix up InstanceID field length from Identity part of infoPart
+
+            var found = tableColumns.TryGetValue(idName, out TableColumn tc);
+            if (found)
+            {
+                if (tc.ColLength < 4)
+                {
+                    tc.ColLength = 4;
+                }
+            }
+            else
+            {
+                var newtc = new TableColumn()
+                {
+                    ColName = idName,
+                    ColType = "Int32",
+                    ColLength = 4
+                };
+                tableColumns.Add(idName, newtc);
+            }
         }
 
         //// https://stackoverflow.com/questions/12416249/hashing-a-string-with-sha256

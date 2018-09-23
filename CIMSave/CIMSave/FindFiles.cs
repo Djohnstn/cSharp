@@ -43,7 +43,7 @@ namespace CIMSave
 
     class FindFiles
     {
-        public string SqlConnectionString { get; set; }
+        //public string SqlConnectionString { get; set; }
         public string TablePrefix { get; set; }
 
         public int Breakspot { get; set; } = 0;
@@ -94,14 +94,17 @@ namespace CIMSave
 
         private string LogTime() => DateTime.Now.ToString("u");
 
+        //private void HandleFile(string filename, string schema)
         private void HandleFile(string filename, string schema)
         {
 
             Console.WriteLine($"{LogTime()} Processing file {filename}.");
 
-            InfoParts p = InfoParts.FromJsonFile(filename);
+            //InfoParts p = InfoParts.FromJsonFile(filename);
+            InfoParts p = GZfileIO.ReadGZtoJson<InfoParts>(filename);
             //p.SqlConnectionString = this.SqlConnectionString;
-            var p2db = new InfoPartsToDB(SqlConnectionString, TablePrefix);
+            //var p2db = new InfoPartsToDB(SqlConnectionString, TablePrefix);
+            var p2db = new InfoPartsToDB(TablePrefix);
             p2db.PartsToDataSet(p, schema);
             //Pause();
         }

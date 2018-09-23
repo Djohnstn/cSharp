@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO.Compression;
 using System.IO;
+using System.Runtime.Serialization.Json;
 
 namespace CIMSave
 {
@@ -69,5 +70,19 @@ namespace CIMSave
             return arr.Length >= 4 && arr[0] == 31 && arr[1] == 139 && arr[2] == 8;
         }
 
+        public static T ReadGZtoJson<T>(string jsonfilename)
+        {
+            var json = GZfileIO.ReadGZtoString(jsonfilename);
+
+            //var deserializer = new JavaScriptSerializer
+            //var deserializer = new DataContractJsonSerializer(typeof(T));
+            //return (T)deserializer.ReadObject(json);
+
+            using (var sr = new FileStream(jsonfilename, FileMode.Open, FileAccess.Read))
+            {
+                var deserializer = new DataContractJsonSerializer(typeof(T));
+                return (T)deserializer.ReadObject(sr);
+            }
+        }
     }
 }

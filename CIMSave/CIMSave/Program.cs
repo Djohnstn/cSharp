@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO.Compression;
-using System.IO;
-using System.Security.Cryptography;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Text;
+//using System.Threading.Tasks;
+//using System.IO.Compression;
+//using System.IO;
+//using System.Security.Cryptography;
 
 
 namespace CIMSave
@@ -19,16 +19,17 @@ namespace CIMSave
             var schema = settings.schema;
             var tablePrefix = settings.TablePrefix;
 
-            string inputfolder = "";
+            //string inputfolder = "";
 
             const string baseMask = "*_*.Json.gz";
             string mask = baseMask;
+            CommandlineParameters.Set(args); //, new Properties.Settings());
             foreach (var arg in args)
             {
-                if (arg.StartsWith("-f",StringComparison.InvariantCultureIgnoreCase))
-                {
-                    inputfolder = arg.Remove(0, 2);
-                }
+                //if (arg.StartsWith("-f",StringComparison.InvariantCultureIgnoreCase))
+                //{
+                //    inputfolder = arg.Remove(0, 2);
+                //}
                 if (arg.StartsWith("-m", StringComparison.InvariantCultureIgnoreCase))
                 {
                     mask = arg.Remove(0, 2);
@@ -39,8 +40,8 @@ namespace CIMSave
 
             Console.WriteLine($"[{connectionString}].[{schema}].[{tablePrefix}...]");
 
-            var f = new FindFiles() { SqlConnectionString = connectionString };
-            f.AllJson(inputfolder, mask, schema, tablePrefix);
+            var f = new FindFiles(); // { SqlConnectionString = connectionString };
+            f.AllJson(CommandlineParameters._fileSaveFolder, mask, schema, tablePrefix);
             //StringCompressDecompress();
         }
 

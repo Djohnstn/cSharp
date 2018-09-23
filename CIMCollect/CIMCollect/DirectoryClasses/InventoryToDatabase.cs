@@ -26,7 +26,7 @@ namespace DirectorySecurityList
         {
             var machine = Environment.MachineName;
             var driveID = _DiskName.Replace(Path.DirectorySeparatorChar.ToString(), "").Replace(":", "");
-            var filePath = GZfileIO.GetSaveFolderName();
+            var filePath = CommandlineParameters._fileSaveFolder; // GZfileIO.GetSaveFolderName();
             if (!Directory.Exists(filePath)) Directory.CreateDirectory(filePath);
             var filePrefix = $"{filePath}{Path.DirectorySeparatorChar}{machine}_Disk_{driveID}_";
             {
@@ -43,7 +43,8 @@ namespace DirectorySecurityList
 
         public void FindFiles()
         {
-            var filePath = GZfileIO.GetSaveFolderName();
+            //var gz = new GZfileIO();
+            var filePath = CommandlineParameters._fileSaveFolder; //GZfileIO.GetSaveFolderName();
             if (!Directory.Exists(filePath)) Directory.CreateDirectory(filePath);
             //var dir = Directory.GetDirectoryRoot(filePath);
             var filePrefix = "*_Disk_*_";

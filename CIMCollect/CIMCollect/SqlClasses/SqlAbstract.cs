@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Security.Cryptography;
 using StringExtensionsIsLike;
+using System.Diagnostics;
 
 namespace Similarity
 {
@@ -16,8 +17,9 @@ namespace Similarity
         Dictionary<string, Int32> FeatureAbstraction = new Dictionary<string, Int32>(1020);
         public bool HasAscii { get; set; } = false;
         public string Allhash { get; set; } = string.Empty;
+        public string Synopsis { get; set; } = string.Empty;
 
-        static readonly Dictionary<string, string> WordHashBase = new Dictionary<string, string>
+        private static readonly Dictionary<string, string> WordHashBase = new Dictionary<string, string>
         {
             {"(", "A"},
             {")", "B"},
@@ -371,6 +373,7 @@ namespace Similarity
         {
             bool HasAscii = false;
             //var h = new Hasher();
+            var synop = new CIMCollect.SqlSynopsis();
             var wordlist = SqlWords(sql);
             foreach (var word in wordlist)
             {
@@ -378,7 +381,12 @@ namespace Similarity
                 {
                     if (Add(word)) HasAscii = true;
                 }
+                synop.Append(word);
             }
+            synop.Finish();
+            Synopsis = synop.ToString();    // get synopsis
+            Debug.WriteLine($"$ {Synopsis}");
+
             BigAdd(String.Join(" ", wordlist.ToArray()));
             return HasAscii;
         }

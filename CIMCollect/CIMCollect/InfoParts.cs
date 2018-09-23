@@ -212,6 +212,7 @@ namespace CIMCollect
             }
         }
 
+		public string SqlConnectionString { get; set; }									   
         public void ToConsole()
         {
             Console.WriteLine("+--------");

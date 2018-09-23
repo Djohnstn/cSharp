@@ -118,11 +118,15 @@ namespace CIMSave
 
     public class Instances
     {
-        public int ID(string name) => (new DBMapper<string, int>("_Instances", -1, "Identity")).ID(name);
+        private static DBMapper<string, int> map = new DBMapper<string, int>("_Instances", -1, "Identity");
+        public static int ID(string name) => map.ID(name);
+        //public int ID2(string name) => (new DBMapper<string, int>("_Instances", -1, "Identity")).ID(name);
     }
     public class Paths
     {
-        public int ID(string name) => (new DBMapper<string, int>("_Paths", -1, "Identity")).ID(name);
+        private static DBMapper<string, int> map = new DBMapper<string, int>("_Paths", -1, "Identity");
+        public static int ID(string name) => map.ID(name);
+        //public int ID(string name) => (new DBMapper<string, int>("_Paths", -1, "Identity")).ID(name);
     }
 
     internal class PathsxOld
@@ -198,8 +202,10 @@ namespace CIMSave
         private List<DataRow> lastTableColumns;
 
         public int ServerID(string servername) => new Servers().ID(servername);
-        public int InstanceID(string instancename) => new Instances().ID(instancename);
-        public int PathID(string pathname) => new Paths().ID(pathname);
+        //public int InstanceID(string instancename) => new Instances().ID(instancename);
+        //public int PathID(string pathname) => new Paths().ID(pathname);
+        public int InstanceID(string instancename) => Instances.ID(instancename);
+        public int PathID(string pathname) => Paths.ID(pathname);
 
         public bool TableExists(string schema, string tableName)
         {

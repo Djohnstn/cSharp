@@ -17,12 +17,13 @@ namespace CIMCollect
 
         static void Main(string[] args)
         {
-            Test();
+            CIMSave.CommandlineParameters.Set(args);
+            //Test();
 
-            //var collect = new Collect(); //).AllConfig();
-            //collect.SQLCollect();
-            //collect.FileCollect();
-            //collect.AllConfig();
+            var collect = new Collect(); //).AllConfig();
+            collect.SQLCollect();
+            collect.FileCollect();
+            collect.AllConfig();
         }
 
         static void Test()

@@ -441,6 +441,7 @@ namespace DirectorySecurityList
         public Int32 SpLength { get; set; }
         public bool HasASCII { get; set; }      
         public string Hash { get; set; }
+        public string Synopsis { get; set; }     // quick list of major patterns of SQL commands
         public string Abstract { get; set; }    // hashes of words, word counts
         public string Status { get; set; }
 
@@ -508,6 +509,7 @@ namespace DirectorySecurityList
                         var baseAbstract = sHash.Abstract(rawbase);
                         var baseHasAscii = sHash.HasAscii;
                         var baseHash = sHash.Allhash;
+                        var baseSynopsis = sHash.Synopsis;
                         sHash.Clear();
 
 
@@ -520,6 +522,7 @@ namespace DirectorySecurityList
                             Created = reader.GetDateTime(4),
                             Modified = reader.GetDateTime(5),
                             Hash = baseHash,
+                            Synopsis = baseSynopsis,
                             Abstract = baseAbstract,
                             HasASCII = baseHasAscii
                         });

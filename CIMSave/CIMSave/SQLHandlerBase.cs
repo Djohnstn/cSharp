@@ -8,6 +8,10 @@ namespace CIMSave
 {
     public class SQLHandlerBase
     {
+        private static string _connectionString;
+        private static string _schema;
+        private static string _tableprefix;
+
         public SQLHandlerBase()
         {
             if (_connectionString == null || _connectionString.Length == 0)
@@ -19,14 +23,12 @@ namespace CIMSave
                 _tableprefix == null || _tableprefix.Length == 0 )
             {
                 var settings = System.Configuration.ConfigurationManager.AppSettings;
-                _connectionString = settings["schema"].Trim();
+                _connectionString = settings["database"].Trim();
+                _schema = settings["schema"].Trim();
                 _tableprefix = settings["TablePrefix"].Trim();
             }
         }
 
-        private static string _connectionString;
-        private static string _schema;
-        private static string _tableprefix;
 
         public string ConnectionString => _connectionString;
         public string Schema => _schema;
@@ -159,6 +161,7 @@ namespace CIMSave
         {
             sqlbase = new SQLHandlerBase();
             NameParameter = nameparameter;
+            this.DefaultValue = defaultvalue;
             queries = (from q in xquerys select Clean(q, tablename, nameparameter)).ToList();
         }
         private string Clean(string cleanthis, string table, string nameparameter)
