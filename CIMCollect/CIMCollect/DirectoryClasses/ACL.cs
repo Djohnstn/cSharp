@@ -719,7 +719,8 @@ namespace DirectorySecurityList
 
         public static ACLSet FromJSON(string jsonfilename)
         {
-            return GZfileIO.ReadGZtoJson<ACLSet>(jsonfilename);
+            return GZfileIO.ReadGZtoPOCO<ACLSet>(jsonfilename);
+            //return GZfileIO.ReadGZtoJson<ACLSet>(jsonfilename);
             //var json = GZfileIO.ReadGZtoString(jsonfilename);
             
             ////var deserializer = new JavaScriptSerializer

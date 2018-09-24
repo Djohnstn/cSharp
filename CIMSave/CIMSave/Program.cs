@@ -39,6 +39,7 @@ namespace CIMSave
 
 
             Console.WriteLine($"[{connectionString}].[{schema}].[{tablePrefix}...]");
+            //Console.WriteLine($"[{}]");
 
             var f = new FindFiles(); // { SqlConnectionString = connectionString };
             f.AllJson(CommandlineParameters._fileSaveFolder, mask, schema, tablePrefix);

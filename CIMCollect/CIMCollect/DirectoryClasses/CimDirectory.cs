@@ -117,7 +117,8 @@ namespace DirectorySecurityList
 
         public static CIMDirectoryCollection FromJSON(string jsonfilename)
         {
-            return GZfileIO.ReadGZtoJson<CIMDirectoryCollection>(jsonfilename);
+            return GZfileIO.ReadGZtoPOCO<CIMDirectoryCollection>(jsonfilename);
+            //return GZfileIO.ReadGZtoJson<CIMDirectoryCollection>(jsonfilename);
         }
     }
 }

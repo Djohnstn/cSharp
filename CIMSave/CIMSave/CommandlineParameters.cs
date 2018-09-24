@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Configuration;
 //using CIMCollect.Properties;
 //using CIMSave.Properties;
@@ -9,13 +10,31 @@ namespace CIMSave
     // this probably violates a ton of best practices... oh well
     static class CommandlineParameters
     {
+        static CommandlineParameters()
+        {
+            initialized = CommandlineSetup();
+        }
         public static string[] Args;
         public static string _fileSaveFolder = string.Empty;
         public static Dictionary<string, string> KeyValues = new Dictionary<string, string>();
-        public static bool initialized = CommandlineSetup();
+        public static bool initialized;
 
         public static bool CommandlineSetup()
         {
+            var connections = System.Configuration.ConfigurationManager.ConnectionStrings;
+            foreach (ConnectionStringSettings connection in connections)
+            {
+                var connName = connection.Name;
+                KeyValues.Add(connection.Name, connection.ConnectionString);
+                if (connName.Contains("."))
+                {
+                    string[] parts = connection.Name.Split('.');
+                    string lastWord = parts[parts.Length - 1];
+                    KeyValues.Add(lastWord, connection.ConnectionString);
+                }
+            }
+            System.Collections.Specialized.NameValueCollection nvc  = new NameValueCollection();
+            nvc.Add(System.Configuration.ConfigurationManager.AppSettings);
             var settings = System.Configuration.ConfigurationManager.AppSettings;
             foreach(SettingsProperty setting in settings)
             {
@@ -30,7 +49,7 @@ namespace CIMSave
             foreach (var arg in args)
             {
                 if (arg.StartsWith("-f")) _fileSaveFolder = arg.Remove(0, 2);
-                if (arg.StartsWith("-") && arg.Length > 2) KeyValues.Add(arg.Substring(0, 2), arg.Remove(2));
+                if (arg.StartsWith("-") && arg.Length > 2) KeyValues.Add(arg.Substring(0, 2), arg.Remove(0, 2));
             }
             //foreach (SettingsProperty property in settings.Properties)
             //{

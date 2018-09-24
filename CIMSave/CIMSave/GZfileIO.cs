@@ -84,5 +84,46 @@ namespace CIMSave
                 return (T)deserializer.ReadObject(sr);
             }
         }
+
+
+        public static T ReadGZtoPOCO<T>(string filename)
+        {
+            T result;
+            var finfo = new System.IO.FileInfo(filename);
+            bool exists = finfo.Exists;
+            var len = exists ? finfo.Length : 0;
+            if (len <= 1)
+            {
+                result = default(T);
+                // empty file or does not exist
+            }
+            else if (filename.EndsWith("gz"))
+            {
+                var deserializer = new DataContractJsonSerializer(typeof(T));
+                // probably should read to memory and apply IsGZip() {...} function
+                using (Stream fs = File.OpenRead(filename))
+                using (var decompress = new GZipStream(fs, CompressionMode.Decompress))
+                //using (var sr = new StreamReader(decompress, Encoding.UTF8))
+                {
+                    //result = sr.ReadToEnd();
+                    result = (T)deserializer.ReadObject(decompress);
+
+                }
+            }
+            else
+            {
+                var deserializer = new DataContractJsonSerializer(typeof(T));
+                using (Stream fs = File.OpenRead(filename))
+                //using (var sr = new StreamReader(fs, Encoding.UTF8))
+                {
+                    result = (T)deserializer.ReadObject(fs);
+                    //result = sr.ReadToEnd();
+                }
+            }
+            return result;
+        }
+
+
+
     }
 }

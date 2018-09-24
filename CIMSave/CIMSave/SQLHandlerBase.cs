@@ -16,16 +16,21 @@ namespace CIMSave
         {
             if (_connectionString == null || _connectionString.Length == 0)
             {
-                var conxStrings = System.Configuration.ConfigurationManager.ConnectionStrings;
-                _connectionString = conxStrings["database"].ConnectionString;
+                _connectionString = CommandlineParameters.Value("database", "");
+                //var conxStrings = System.Configuration.ConfigurationManager.ConnectionStrings;
+                //_connectionString = conxStrings["database"].ConnectionString;
             }
             if (_schema == null || _schema.Length == 0 || 
                 _tableprefix == null || _tableprefix.Length == 0 )
             {
-                var settings = System.Configuration.ConfigurationManager.AppSettings;
-                _connectionString = settings["database"].Trim();
-                _schema = settings["schema"].Trim();
-                _tableprefix = settings["TablePrefix"].Trim();
+                //var settings = System.Configuration.ConfigurationManager.AppSettings;
+                //_connectionString = settings["database"].Trim();
+                //_schema = settings["schema"].Trim();
+                //_tableprefix = settings["TablePrefix"].Trim();
+
+                _schema = CommandlineParameters.Value("schema","dbo").Trim();
+                _tableprefix = CommandlineParameters.Value("TablePrefix","xxx").Trim();
+
             }
         }
 

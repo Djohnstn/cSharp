@@ -1,12 +1,6 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Diagnostics;
 using CIMCollect;
-using System.Data;
 //using System.Data.DataSetExtensions;
 
 namespace CIMSave
@@ -101,7 +95,8 @@ namespace CIMSave
             Console.WriteLine($"{LogTime()} Processing file {filename}.");
 
             //InfoParts p = InfoParts.FromJsonFile(filename);
-            InfoParts p = GZfileIO.ReadGZtoJson<InfoParts>(filename);
+            //InfoParts p = GZfileIO.ReadGZtoJson<InfoParts>(filename);
+            InfoParts p = GZfileIO.ReadGZtoPOCO<InfoParts>(filename);
             //p.SqlConnectionString = this.SqlConnectionString;
             //var p2db = new InfoPartsToDB(SqlConnectionString, TablePrefix);
             var p2db = new InfoPartsToDB(TablePrefix);
