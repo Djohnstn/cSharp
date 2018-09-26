@@ -365,7 +365,9 @@ namespace CIMCollect
                     }
                 }
             }
-            Debug.WriteLine($"$ {newWord} = '{newValue}'");
+//#if DEBUG
+//            //Debug.WriteLine($"$ {newWord} = '{newValue}'");
+//#endif
             if (newValue?.Length > 0 && hide == false)
             {
                 if (major)

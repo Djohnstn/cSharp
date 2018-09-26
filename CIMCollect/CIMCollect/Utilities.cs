@@ -34,7 +34,7 @@ namespace CIMCollect
 
         public static char Pause(string prompt, int timewait)
         {
-            Console.Write(prompt);
+            Console.Write($"{Collect.LogTime()} {prompt}");
             char keypress = (char)0;
             if (Environment.UserInteractive)
             {

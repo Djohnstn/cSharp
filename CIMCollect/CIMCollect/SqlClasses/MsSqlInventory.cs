@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -487,10 +488,10 @@ namespace DirectorySecurityList
             //Where o.xtype = 'P'
             //order by o.name, c.colid
             //";
-
+            int spNumber = 0;
             var sHash = new SqlAbstract();
-
-
+            var sw = new Stopwatch();
+            sw.Start();
             var db = database.Split('.');
             var connection = $"server={server}\\{instance}; database={database}; Integrated Security=SSPI;";
             using (var con = new SqlConnection(connection))
@@ -501,8 +502,16 @@ namespace DirectorySecurityList
                 {
                     while (reader.Read())
                     {
+                        spNumber++;
                         var uspBody = reader.SafeGetString(6);
-
+                        var elapsedMs = sw.ElapsedMilliseconds;
+                        if (elapsedMs > 2000)
+                        {
+                            sw.Restart();
+                            var spname = database + "." + reader.SafeGetString(1) + "." + reader.SafeGetString(2);
+                            Console.WriteLine($"{Collect.LogTime()} Reading.. MsSqlInventory::SP{spNumber}:[{spname}]");
+                            //Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlStoredProcedures]");
+                        }
                         var rawbase = uspBody.Split(crlf, StringSplitOptions.RemoveEmptyEntries);
                         //var basestring = SqlCleaner.Clean(rawbase, HideAscii: false);
                         //var BaseHasAscii = sHash.AddScript(basestring);
@@ -530,6 +539,7 @@ namespace DirectorySecurityList
                     }
                 }
             }
+            sw.Stop();
         }
 
     }
@@ -574,7 +584,7 @@ namespace DirectorySecurityList
             dblist.ForEach(d => { procedures
                                     .AddRange(MsSqlStoredProcedure.GetSqlStoredProcedures(d.Server, d.Instance, d.Name)
                                     .ToList<MsSqlStoredProcedure>()); });
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlStoredProcedures]");
+            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::({procedures.Count()}):[GetSqlStoredProcedures]");
 
             var InventoryFolder = saveToFolder;
             MsSqlServers.ToJsonFile(sqlinstances, InventoryTime, InventoryFolder);

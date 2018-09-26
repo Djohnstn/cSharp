@@ -108,9 +108,13 @@ namespace CIMSave
                     HandleInfoParts(filename, schema);
                     break;
                 case 1: // Directories - file inventory
+                    Console.WriteLine($"{LogTime()} Unable to process directory file {filename}.");
+                    Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
                     break;
                 case 2: // ACL list
+                    Console.WriteLine($"{LogTime()} Unable to process ACL file {filename}.");
+                    Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
                     break;
                 case -1: // unknown

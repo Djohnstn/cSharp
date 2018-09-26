@@ -15,7 +15,7 @@ namespace CIMCollect
     {
         public Collect()
         {
-            string savefolder = GZfileIO.GetSaveFolderName();
+            string savefolder = CommandlineParameters._fileSaveFolder;
             SaveToFolder = savefolder;
             if (!System.IO.Directory.Exists(SaveToFolder)) Directory.CreateDirectory(SaveToFolder);
         }
@@ -57,7 +57,7 @@ namespace CIMCollect
             }
             FileRunner.FinishFileSaver(SaveToFolder);
             Console.WriteLine($"{LogTime()} Processed {files} files, {collections} collections in {totalMilliSeconds}ms.");
-            Utilities.SemiPause("Press any key to exit.", 30);
+            //Utilities.SemiPause("Press any key to exit.", 30);
         }
 
         internal void FileCollect()

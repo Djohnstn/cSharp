@@ -198,13 +198,15 @@ namespace DirectorySecurityList
         }
     }
 
+    [DataContract]
     class ACESet
     {
         ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
+        [DataMember]
+        public SortedList<ACE, int> aceList = new SortedList<ACE, int>(new ACEComparer());
 
-        private SortedList<ACE, int> aceList = new SortedList<ACE, int>(new ACEComparer());
-        
-        private ConcurrentDictionary<int, ACE> idList = new ConcurrentDictionary<int, ACE>();
+        [DataMember]
+        public ConcurrentDictionary<int, ACE> idList = new ConcurrentDictionary<int, ACE>();
         private int maxID = -1;
 
         public int GetId(ACE ace)

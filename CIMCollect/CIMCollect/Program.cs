@@ -24,6 +24,7 @@ namespace CIMCollect
             collect.SQLCollect();
             collect.FileCollect();
             collect.AllConfig();
+            Utilities.SemiPause("Collected all data, press any key to exit.", 30);
         }
 
         static void Test()

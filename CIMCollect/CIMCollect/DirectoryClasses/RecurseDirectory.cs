@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using CIMSave;
+using CIMCollect;
 
 namespace DirectorySecurityList
 {
@@ -536,7 +537,8 @@ namespace DirectorySecurityList
                         if (firstPrint)
                         {
                             firstPrint = false;
-                            Console.WriteLine($"@ {dir.FullName}:");
+                            //Console.WriteLine($"@ {dir.FullName}:");
+                            Console.WriteLine($"{Collect.LogTime()} @ {dir.FullName}:");
                         }
                         if (Verbose) Console.WriteLine($"{fileNameOriginal.PadRight(34)}; {fileModifyDate.ToString("u")}; {filebytes.ToString().PadLeft(12)}; {version.PadRight(12)}; {checksum};");
                         if (null == dirinfo)
