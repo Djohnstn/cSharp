@@ -210,7 +210,21 @@ namespace CIMSave
 
         private Dictionary<HashSig, int> HashToID = new Dictionary<HashSig, int>();
 
-        public bool Add(DataRow row) => Add(new HashSig(row), row.Field<int>("id"));
+        public bool AddRow(DataRow row, int rownumber)
+        {
+            var sig = new HashSig(row);
+            int id;
+            if (row["id"] == System.DBNull.Value)
+            {
+                //id = rownumber;
+                throw new Exception(  "oops id is null in HashTable.add");
+            }
+            else
+            {
+                id = row.Field<int>("id");
+            }
+            return Add(sig, id);
+        }
 
         public bool Add(HashSig hashSig, int id)
         {

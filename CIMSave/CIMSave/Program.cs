@@ -24,6 +24,10 @@ namespace CIMSave
             const string baseMask = "*_*.Json.gz";
             string mask = baseMask;
             CommandlineParameters.Set(args); //, new Properties.Settings());
+            CommandlineParameters.Set("database", connectionString);
+            CommandlineParameters.Set("schema", schema);
+            CommandlineParameters.Set("TablePrefix", tablePrefix);
+
             foreach (var arg in args)
             {
                 //if (arg.StartsWith("-f",StringComparison.InvariantCultureIgnoreCase))

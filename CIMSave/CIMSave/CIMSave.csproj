@@ -74,6 +74,9 @@
     <Compile Include="..\..\CIMCollect\CIMCollect\InfoParts.cs">
       <Link>InfoParts.cs</Link>
     </Compile>
+    <Compile Include="..\..\CIMCollect\CIMCollect\Utilities.cs">
+      <Link>Utilities.cs</Link>
+    </Compile>
     <Compile Include="CommandlineParameters.cs" />
     <Compile Include="FindFiles.cs" />
     <Compile Include="GZfileIO.cs" />

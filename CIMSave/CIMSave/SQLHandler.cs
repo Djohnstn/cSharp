@@ -118,75 +118,18 @@ namespace CIMSave
 
     public class Instances
     {
-        private static DBMapper<string, int> map = new DBMapper<string, int>("_Instances", -1, "Identity");
+        private static DBMapper<string, int> map = new DBMapper<string, int>("_Instances", -1, "Name");
         public static int ID(string name) => map.ID(name);
         //public int ID2(string name) => (new DBMapper<string, int>("_Instances", -1, "Identity")).ID(name);
     }
     public class Paths
     {
-        private static DBMapper<string, int> map = new DBMapper<string, int>("_Paths", -1, "Identity");
+        private static DBMapper<string, int> map = new DBMapper<string, int>("_Paths", -1, "Name");
         public static int ID(string name) => map.ID(name);
         //public int ID(string name) => (new DBMapper<string, int>("_Paths", -1, "Identity")).ID(name);
     }
 
-    internal class PathsxOld
-    {
-        // keep up name to ID translation, no need to go back to SQL for this batch run.
-        static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
-        static readonly string[] xquerys = new string[]
-        {           // try these queries to see if can find the named entity id, or create a named entity id
-                    "Select id from [dbo].[CIM__Paths] Where Identity = @name",
-                    "Insert into [dbo].[CIM__Paths] (Identity) OUTPUT Inserted.ID Values(@name)"
-        };
-        const string NameParameter = "name";
-        public int ID(string Name)
-        {
-            if (xIDs.TryGetValue(Name, out int idCache))
-            {
-                return idCache;
-            }
-            var sqlbase = new SQLHandlerBase();
-            foreach (var query in xquerys)
-            {
-                var id = sqlbase.DoQuery<int>(query, -1, NameParameter, Name);
-                if (id > 0)
-                {
-                    xIDs.TryAdd(Name, id); // save serverid, then return it
-                    return id;
-                }
-            }
-            return -1;
-        }
-    }
 
-    //internal class Lines
-    //{
-    //    // keep up name to ID translation, no need to go back to SQL for this batch run.
-    //    static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
-    //    static readonly string[] xquerys = new string[]
-    //    {           // try these queries to see if can find the named entity id, or create a named entity id
-    //                "Select id from [dbo].[CIM__Lines] Where Identity = @name",
-    //                "Insert into [dbo].[CIM__Lines] (Identity) OUTPUT Inserted.ID Values(@name)"
-    //    };
-    //    const string NameParameter = "name";
-    //    public int ID(string Name)
-    //    {
-    //        if (xIDs.TryGetValue(Name, out int idCache))
-    //        {
-    //            return idCache;
-    //        }
-    //        foreach (var query in xquerys)
-    //        {
-    //            var id = SQLHandlerBase.DoQuery<int>(query, -1, NameParameter, Name);
-    //            if (id > 0)
-    //            {
-    //                xIDs.TryAdd(Name, id); // save serverid, then return it
-    //                return id;
-    //            }
-    //        }
-    //        return -1;
-    //    }
-    //}
 
     class SQLHandler
     {
@@ -297,21 +240,25 @@ namespace CIMSave
             foreach (DataColumn col in dt.Columns)
             {
                 var colName = col.ColumnName;
-                if (colName == "Server") colName = "ServerID";
-                if (colName == "Instance") colName = "InstanceID"; //instanceWhere = true; InstanceID = InstanceID(what?)}
-                if (colName == "Path") colName = "PathID"; //, ...};
+                if (colName == "Server") colName = "ServerId";
+                if (colName == "Instance") colName = "InstanceId"; //instanceWhere = true; InstanceID = InstanceID(what?)}
+                if (colName == "Path") colName = "PathId"; //, ...};
                 if (!(colName.StartsWith("_")))
                 {
-                    sb.AppendLine($" {comma} [t].[{colName}] ");
+                    //sb.AppendLine($" {comma} [t].[{colName}] ");
+                    sb.Append($" {comma} [t].[{colName}] ");
                     if (comma.Length == 0) comma = ",";
                 }
             }
-            sb.AppendLine($" FROM [{schema}].[{tableName}] t ");
-            sb.AppendLine($" WHERE t.[ServerId] = {serverId} ");
+            //sb.AppendLine($" FROM [{schema}].[{tableName}] t ");
+            //sb.AppendLine($" WHERE t.[ServerId] = {serverId} ");
+            sb.Append($" FROM [{schema}].[{tableName}] t ");
+            sb.Append($" WHERE t.[ServerId] = {serverId} ");
             return sb.ToString();
         }
-
-        public static void DTtoConsole(DataTable dt, Dictionary<int, string> hashList, string dtName)
+        // HashTable
+        //public static void DTtoConsole(DataTable dt, Dictionary<int, string> hashList, string dtName)
+        public static void DTtoConsole(DataTable dt, HashTable hashList, string dtName)
         {
             Console.WriteLine($"{dtName}:{dt.TableName} rows:{dt.Rows.Count}");
             //var idFound = dt
@@ -339,8 +286,10 @@ namespace CIMSave
                     if (comma.Length == 0) comma = ",";
                 }
                 var rid = dr.Field<int>("id");
-                bool hashFound = hashList.TryGetValue(rid, out string hashString);
-                sbr.Append($"{comma}{hashString.PadRight(6, ' ').Substring(0, 6)}");
+                //bool hashFound = hashList.TryGetValue(rid, out string hashString);
+                bool hashFound = hashList.TryGetHash(rid, out HashSig hashSig);
+                string hashString = hashFound ? hashSig.ToString() : string.Empty;
+                sbr.Append($"{comma}{hashString.PadRight(7, ' ').Substring(1, 6)}");
                 Console.WriteLine(sbr.ToString());
                 sbr.Clear();
             }
@@ -522,9 +471,11 @@ namespace CIMSave
                     (
 	                    [Id] INT NOT NULL IDENTITY (1, 1) CONSTRAINT PK_{schema}_{tableName}_ID  PRIMARY KEY,
 	                    [ServerId] int not null,
+	                    [InstanceId] int not null,
+	                    [PathId] int not null,
 	                    [Name] nvarchar({nameLength}) not null
                     ";
-                string sql2 = $@"CREATE INDEX [IX_{tableName}_ServerID_Name] ON [dbo].[{tableName}] ([ServerId], [Name]);";
+                string sql2 = $"CREATE INDEX [IX_{tableName}_ServerInstancePathName] ON [dbo].[{tableName}] ([ServerId],[InstanceId],[PathId],[Name]);";
                 newTableName = tableName;
                 newSchemaName = schema;
                 newTableCommand = sql1;

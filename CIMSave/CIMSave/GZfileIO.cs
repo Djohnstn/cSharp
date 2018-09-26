@@ -31,7 +31,7 @@ namespace CIMSave
             return len;
         }
 
-        public static string ReadGZtoString(string filename)
+        public static string ReadGZtoString(string filename, int maxReadLength = -1)
         {
             string result;
             var finfo = new System.IO.FileInfo(filename);
@@ -48,7 +48,17 @@ namespace CIMSave
                 using (var decompress = new GZipStream(fs, CompressionMode.Decompress))
                 using (var sr = new StreamReader(decompress, Encoding.UTF8))
                 {
-                    result = sr.ReadToEnd();
+                    if (maxReadLength == -1)
+                    {
+                        result = sr.ReadToEnd();
+                    }
+                    else
+                    {
+                        const int buffersize = 2048;
+                        var buffer = new char[buffersize];
+                        var readin = sr.ReadBlock(buffer, 0, buffersize);
+                        return new string(buffer, 0, readin);
+                    }
                 }
             }
             else
@@ -123,7 +133,24 @@ namespace CIMSave
             return result;
         }
 
+        public static int Sniff(string filename, string[] possibilities)
+        {
+            var head = ReadGZtoString(filename, 2048);
+            for (int test = 0; test < possibilities.Length; test++)
+            {
+                if (head.IndexOf(possibilities[test], StringComparison.InvariantCulture) > -1)
+                {
+                    return test;
+                }
+            }
+            return -1;
+        }
 
+        public static string Head(string filename)
+        {
+            var head = ReadGZtoString(filename, 2048);
+            return head;
+        }
 
     }
 }

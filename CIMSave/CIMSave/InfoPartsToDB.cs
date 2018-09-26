@@ -69,11 +69,11 @@ namespace CIMSave
             fileDt.PrimaryKey = new DataColumn[] { fileDt.Columns["id"] };
 
             this.Breakspot = 0;
-
+#if DEBUG
             // dump the lists
-            //SQLHandler.DTtoConsole(sQLDt, sqlHash, "sQLDt");
-            //SQLHandler.DTtoConsole(fileDt, fileHash, "fileDt");
-
+            SQLHandler.DTtoConsole(sQLDt, sqlHash, "sQLDt");
+            SQLHandler.DTtoConsole(fileDt, fileHash, "fileDt");
+#endif
             // delete all sqlDT not in fileDT
             DeleteDTNotInDT(sQLDt, sqlHash, fileDt, fileHash);
 
@@ -141,9 +141,11 @@ namespace CIMSave
         {
             var hashList = new HashTable(); //Dictionary<int, byte[]>(); // HashList<int, string>
             var column = dt.Columns;
+            int rownumber = 0;
             foreach (DataRow row in dt.Rows)
             {
-                hashList.Add(row);
+                rownumber++;
+                hashList.AddRow(row, rownumber);
             }
             return hashList;
         }
@@ -158,10 +160,13 @@ namespace CIMSave
         private bool FillDataTable(DataTable fileDt, InfoParts fullPartsList, int serverId)
         {
             int lastPart = -1;
+            int partBase = -1;           // each section will reset part number, this will help correct that between sections
             DataRow myRow = null;
             //  foreach (InfoPart part in fullPartsList.PartsList)
             foreach (var section in fullPartsList.Parts)
             {
+                partBase++;             // bump part number
+                if (lastPart > -1) partBase += lastPart;    // move up by atleast as many parts as in last section
                 var instancePath = section.Key;
                 var instance = instancePath.Instance;
                 var instanceId = Instances.ID(instance);
@@ -180,17 +185,14 @@ namespace CIMSave
                     }
                     else
                     {
-                        // save previous row
-                        if (myRow != null)
-                        {
-                            myRow.EndEdit();
-                            fileDt.Rows.Add(myRow);
-                        }
+                        fileDt.MaybeAddRow(myRow);
                         // new row
                         myRow = fileDt.NewRow();
                         myRow.BeginEdit();
-                        myRow["id"] = partIndex;    // hope this is it... NOT IT!!!
+                        myRow["id"] = partIndex + partBase;    // hope this is it... keep this!!!
                         myRow["ServerId"] = serverId;
+                        myRow["InstanceId"] = instanceId;
+                        myRow["PathId"] = pathId;
                         myRow["Name"] = partID;
                         lastPart = partIndex;
                     };
@@ -211,15 +213,17 @@ namespace CIMSave
                     myRow[partName] = foo;
 
                 }
-            // save previous row
-                if (myRow != null)
-                {
-                    myRow.EndEdit();
-                    fileDt.Rows.Add(myRow);
-                }
+                // save previous row
+                fileDt.MaybeAddRow(myRow);
+                //if (myRow != null)
+                //{
+                //    myRow.EndEdit();
+                //    fileDt.Rows.Add(myRow);
+                //}
             }
             return true;
         }
+
 
         private string GetStringIntforUInt(string partType, string partValue)
         {
@@ -318,7 +322,8 @@ namespace CIMSave
                     var colExists = (dbColLength != 0);
                     if (!colExists)
                     {
-                        if (colName.Equals("Name")) continue;   // skip this Name column?
+                        if (ContinueParts.Contains(colName.ToLower())) continue;
+                        //if (colName.Equals("Name")) continue;   // skip this Name column?
                         var result = sQLHandler.AddColumn(schema, tableName, colName, ct, colLength);
                         if (!result)
                         {
@@ -362,7 +367,8 @@ namespace CIMSave
                     foreach (var col in tableColumns)
                     {
                         var colName = col.Key;
-                        if (colName.Equals("Name")) continue;   // skip this name, OK dont skip this,but must do sooner
+                        if (ContinueParts.Contains(colName.ToLower())) continue;
+                        //if (colName.Equals("Name")) continue;   // skip this name, OK dont skip this,but must do sooner
                         var colType = col.Value.ColType;
                         var ct = sQLHandler.ColTypeStringToEnum(colType);
                         var colLength = col.Value.ColLength;   // max length in table
@@ -392,6 +398,10 @@ namespace CIMSave
             return success;
         }
 
+        private readonly HashSet<string> ContinueParts = new HashSet<string> { "name",
+                                                                        "server", "serverid",
+                                                                        "path", "pathid", 
+                                                                        "instance", "instanceid"};
         private DataTable AddColumnsToDataTable(string tableName, SortedDictionary<string, TableColumn> columnList)
         {
             var dt = new DataTable(tableName);
@@ -404,16 +414,21 @@ namespace CIMSave
             foreach (var part in columnList.Values)
             {
                 var pName = part.ColName;
-                if (pName == "Name") continue;
-                //if (pName == "Instance") continue;
+                if (ContinueParts.Contains(pName.ToLower())) continue;
+                //if (pName == "Name") continue;
+                ////if (pName == "Instance") continue;
+                ////if (pName == "Path") continue;
+                //if (pName == "Server") continue;
+                //if (pName == "ServerId") continue;
                 //if (pName == "Path") continue;
-                if (pName == "Server") continue;
-                if (pName == "ServerId") continue;
+                //if (pName == "PathId") continue;
+                //if (pName == "Instance") continue;
+                //if (pName == "InstanceId") continue;
                 var pType = part.ColType;
                 var len = part.ColLength;
                 // JDJ 8-29-2018 - add two special lookups - Path and Instance
-                if (pName.Equals("Path")) { pName = "PathId"; pType = "Int32"; len = 4; }
-                if (pName.Equals("Instance")) { pName = "InstanceId"; pType = "Int32"; len = 4; }
+                //if (pName.Equals("Path")) { pName = "PathId"; pType = "Int32"; len = 4; }
+                //if (pName.Equals("Instance")) { pName = "InstanceId"; pType = "Int32"; len = 4; }
                 bool setMaxLength = false;
                 DataColumn dc = new DataColumn()
                 {
@@ -552,44 +567,26 @@ namespace CIMSave
                     }
                 }
             }
+            // fix up ID fields from Identity part of infoPart
+            ValidateIDColumn(tableColumns, "InstanceId", "Int32", 4);
+            ValidateIDColumn(tableColumns, "PathId", "Int32", 4);
             // fix up Name field length from Identity part of infoPart
-            {
-                var found = tableColumns.TryGetValue("Name", out TableColumn tc);
-                if (found)
-                {
-                    if (tc.ColLength < identityLength)
-                    {
-                        tc.ColLength = identityLength;
-                    }
-                }
-                else
-                {
-                    var newtc = new TableColumn()
-                    {
-                        ColName = "Name",
-                        ColType = "String",
-                        ColLength = identityLength
-                    };
-                    tableColumns.Add("Name", newtc);
-                }
-            }
-            ValidateIDColumn(tableColumns, "InstanceID");
-            ValidateIDColumn(tableColumns, "PathID");
+            ValidateIDColumn(tableColumns, "Name", "String", identityLength);
 
             return tableColumns;
 
         }
 
-        private void ValidateIDColumn(SortedDictionary<string, TableColumn> tableColumns, string idName)
+        private void ValidateIDColumn(SortedDictionary<string, TableColumn> tableColumns, string idName, string idType, int sqlLength)
         {
             // fix up InstanceID field length from Identity part of infoPart
 
             var found = tableColumns.TryGetValue(idName, out TableColumn tc);
             if (found)
             {
-                if (tc.ColLength < 4)
+                if (tc.ColLength < sqlLength)
                 {
-                    tc.ColLength = 4;
+                    tc.ColLength = sqlLength;
                 }
             }
             else
@@ -597,8 +594,8 @@ namespace CIMSave
                 var newtc = new TableColumn()
                 {
                     ColName = idName,
-                    ColType = "Int32",
-                    ColLength = 4
+                    ColType = idType,
+                    ColLength = sqlLength
                 };
                 tableColumns.Add(idName, newtc);
             }

@@ -33,8 +33,8 @@ namespace CIMSave
                     KeyValues.Add(lastWord, connection.ConnectionString);
                 }
             }
-            System.Collections.Specialized.NameValueCollection nvc  = new NameValueCollection();
-            nvc.Add(System.Configuration.ConfigurationManager.AppSettings);
+            //System.Collections.Specialized.NameValueCollection nvc  = new NameValueCollection();
+            //nvc.Add(System.Configuration.ConfigurationManager.AppSettings);
             var settings = System.Configuration.ConfigurationManager.AppSettings;
             foreach(SettingsProperty setting in settings)
             {
@@ -49,12 +49,25 @@ namespace CIMSave
             foreach (var arg in args)
             {
                 if (arg.StartsWith("-f")) _fileSaveFolder = arg.Remove(0, 2);
-                if (arg.StartsWith("-") && arg.Length > 2) KeyValues.Add(arg.Substring(0, 2), arg.Remove(0, 2));
+                if (arg.StartsWith("-") && arg.Length > 2) KeyValues[arg.Substring(0, 2)] = arg.Remove(0, 2);
             }
             //foreach (SettingsProperty property in settings.Properties)
             //{
             //    KeyValues.Add(property.Name, property.DefaultValue.ToString());
             //}
+        }
+        public static void Set(string arg, string value) //, Settings settings)
+        {
+            if (arg.StartsWith("-") && arg.Length > 2)
+            {
+                KeyValues[arg.Remove(0, 1)] = value;
+            }
+            else
+            {
+                KeyValues[arg] = value;
+                //KeyValues.Add(arg, value);
+            }
+
         }
 
         public static bool TryGetValue(string key, out string result)

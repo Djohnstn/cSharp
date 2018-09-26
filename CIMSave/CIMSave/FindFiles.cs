@@ -82,11 +82,14 @@ namespace CIMSave
 
         private void Pause()
         {
-            Console.Write("Press enter to exit");
-            Console.ReadLine();
+            Utilities.SemiPause("Press any key to exit.", 30);
+            //Console.Write("Press enter to exit");
+            //Console.ReadLine();
         }
 
         private string LogTime() => DateTime.Now.ToString("u");
+
+        private readonly string[] possibilities = new string[] { "{\"AsOf\":", "{\"Directories\":", "{\"idList\":" };
 
         //private void HandleFile(string filename, string schema)
         private void HandleFile(string filename, string schema)
@@ -96,12 +99,37 @@ namespace CIMSave
 
             //InfoParts p = InfoParts.FromJsonFile(filename);
             //InfoParts p = GZfileIO.ReadGZtoJson<InfoParts>(filename);
+
+            var header = GZfileIO.Head(filename).Left(64);
+            var sniffType = GZfileIO.Sniff(filename, possibilities);
+            switch (sniffType)
+            {
+                case 0: // AsOf -> InfoParts
+                    HandleInfoParts(filename, schema);
+                    break;
+                case 1: // Directories - file inventory
+                    //throw new NotImplementedException(header);
+                    break;
+                case 2: // ACL list
+                    //throw new NotImplementedException(header);
+                    break;
+                case -1: // unknown
+                default:
+                    Console.WriteLine($"{LogTime()} Unable to process file {filename}.");
+                    Console.WriteLine($" >>>{header}<<< ");
+                    break;
+            }
+
+            //Pause();
+        }
+
+        private void HandleInfoParts(string filename, string schema)
+        {
             InfoParts p = GZfileIO.ReadGZtoPOCO<InfoParts>(filename);
             //p.SqlConnectionString = this.SqlConnectionString;
             //var p2db = new InfoPartsToDB(SqlConnectionString, TablePrefix);
             var p2db = new InfoPartsToDB(TablePrefix);
             p2db.PartsToDataSet(p, schema);
-            //Pause();
         }
     }
 }

@@ -3,9 +3,24 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
+using System.Data;
 
 namespace CIMSave
 {
+    public static class SQLDataRowExtensions
+    {
+        public static void MaybeAddRow(this DataTable fileDt, DataRow myRow)
+        {
+            // save previous row
+            //if (myRow != null)
+            if (myRow?.RowState == DataRowState.Detached)
+            {
+                myRow.EndEdit();
+                fileDt.Rows.Add(myRow);
+            }
+        }
+    }
+
     public class SQLHandlerBase
     {
         private static string _connectionString;
@@ -17,19 +32,28 @@ namespace CIMSave
             if (_connectionString == null || _connectionString.Length == 0)
             {
                 _connectionString = CommandlineParameters.Value("database", "");
-                //var conxStrings = System.Configuration.ConfigurationManager.ConnectionStrings;
-                //_connectionString = conxStrings["database"].ConnectionString;
+                if (_connectionString?.Length < 1)
+                {
+                    var conxStrings = System.Configuration.ConfigurationManager.ConnectionStrings;
+                    _connectionString = conxStrings["database"].ConnectionString;
+                }
             }
             if (_schema == null || _schema.Length == 0 || 
                 _tableprefix == null || _tableprefix.Length == 0 )
             {
-                //var settings = System.Configuration.ConfigurationManager.AppSettings;
-                //_connectionString = settings["database"].Trim();
-                //_schema = settings["schema"].Trim();
-                //_tableprefix = settings["TablePrefix"].Trim();
 
                 _schema = CommandlineParameters.Value("schema","dbo").Trim();
-                _tableprefix = CommandlineParameters.Value("TablePrefix","xxx").Trim();
+                _tableprefix = CommandlineParameters.Value("TablePrefix","CIM_").Trim();
+                if (_schema?.Length < 1) {
+                    var settings = System.Configuration.ConfigurationManager.AppSettings;
+                    //_connectionString = settings["database"].Trim();
+                    _schema = settings["schema"].Trim();
+                }
+                if (_tableprefix?.Length <1)
+                {
+                    var settings = System.Configuration.ConfigurationManager.AppSettings;
+                    _tableprefix = settings["TablePrefix"].Trim();
+                }
 
             }
         }
@@ -114,8 +138,16 @@ namespace CIMSave
                     {
                         command.Parameters.Add(p);
                     }
-                    var scaler = command.ExecuteScalar();
-                    if (scaler != null)
+                    object scaler = command.ExecuteScalar();
+                    if (scaler == null)
+                    {
+                        result = defaultValue;
+                    }
+                    else if (scaler == System.DBNull.Value) //(scaler != null)
+                    {
+                        result = defaultValue;
+                    }
+                    else
                     {
                         result = (T)scaler;
                     }
@@ -158,7 +190,7 @@ namespace CIMSave
         };
 
         private SQLHandlerBase sqlbase;
-        private readonly List<string> queries;
+        private readonly List<string> InstanceQueries;
         private readonly string NameParameter;
         private readonly T2 DefaultValue;
 
@@ -167,7 +199,7 @@ namespace CIMSave
             sqlbase = new SQLHandlerBase();
             NameParameter = nameparameter;
             this.DefaultValue = defaultvalue;
-            queries = (from q in xquerys select Clean(q, tablename, nameparameter)).ToList();
+            InstanceQueries = (from q in xquerys select Clean(q, tablename, nameparameter)).ToList();
         }
         private string Clean(string cleanthis, string table, string nameparameter)
         {
@@ -186,7 +218,7 @@ namespace CIMSave
                 return idCache;
             }
             var sqlbase = new SQLHandlerBase();
-            foreach (var query in xquerys)
+            foreach (var query in InstanceQueries)
             {
                 T2 id = sqlbase.DoQueryScaler<T1,T2>(query, DefaultValue, NameParameter, Name);
                 if (id != null && !id.Equals(DefaultValue))
