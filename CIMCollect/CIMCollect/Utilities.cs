@@ -10,6 +10,13 @@ namespace CIMCollect
 {
     class Utilities
     {
+
+        public static string LogTime()
+        {
+            return DateTime.Now.ToString("u");
+        }
+
+
         public static void Pause()
         {
             if (Environment.UserInteractive)
@@ -34,7 +41,7 @@ namespace CIMCollect
 
         public static char Pause(string prompt, int timewait)
         {
-            Console.Write($"{Collect.LogTime()} {prompt}");
+            Console.Write($"{LogTime()} {prompt}");
             char keypress = (char)0;
             if (Environment.UserInteractive)
             {

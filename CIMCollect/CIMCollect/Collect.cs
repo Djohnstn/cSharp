@@ -51,12 +51,12 @@ namespace CIMCollect
                 FileRunner.EachFileSection(ref collections, server, filename, ini);
                 EachPowerShellSection(ref collections, server, ref fileMilliSeconds, filename, ini);
 
-                Console.WriteLine($"{LogTime()} Processed file {filename}, {collections} collections in {fileMilliSeconds}ms.");
+                Console.WriteLine($"{Utilities.LogTime()} Processed file {filename}, {collections} collections in {fileMilliSeconds}ms.");
                 totalMilliSeconds += fileMilliSeconds;
                 fileMilliSeconds = 0;
             }
             FileRunner.FinishFileSaver(SaveToFolder);
-            Console.WriteLine($"{LogTime()} Processed {files} files, {collections} collections in {totalMilliSeconds}ms.");
+            Console.WriteLine($"{Utilities.LogTime()} Processed {files} files, {collections} collections in {totalMilliSeconds}ms.");
             //Utilities.SemiPause("Press any key to exit.", 30);
         }
 
@@ -97,7 +97,7 @@ namespace CIMCollect
         private bool RunPowerShellQuery(string server, ref long fileMilliSeconds, string filename, string section, string iniName, string query)
         {
             bool result;
-            Console.WriteLine($"{LogTime()} Begin {filename}::{server}:[{section}]");
+            Console.WriteLine($"{Utilities.LogTime()} Begin {filename}::{server}:[{section}]");
             var sw = new Stopwatch();
             sw.Start();
             {
@@ -109,14 +109,10 @@ namespace CIMCollect
             }
             sw.Stop();
             fileMilliSeconds += sw.ElapsedMilliseconds;
-            Console.WriteLine($"{LogTime()} Finis {filename}::{server}:[{section}] rc={result}; in={sw.ElapsedMilliseconds}ms");
+            Console.WriteLine($"{Utilities.LogTime()} Finis {filename}::{server}:[{section}] rc={result}; in={sw.ElapsedMilliseconds}ms");
             return result;
         }
 
 
-        public static string LogTime()
-        {
-            return DateTime.Now.ToString("u");
-        }
     }
 }
