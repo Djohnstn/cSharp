@@ -538,7 +538,7 @@ namespace DirectorySecurityList
                         {
                             firstPrint = false;
                             //Console.WriteLine($"@ {dir.FullName}:");
-                            Console.WriteLine($"{Collect.LogTime()} @ {dir.FullName}:");
+                            Console.WriteLine($"{Utilities.LogTime()} @ {dir.FullName}:");
                         }
                         if (Verbose) Console.WriteLine($"{fileNameOriginal.PadRight(34)}; {fileModifyDate.ToString("u")}; {filebytes.ToString().PadLeft(12)}; {version.PadRight(12)}; {checksum};");
                         if (null == dirinfo)

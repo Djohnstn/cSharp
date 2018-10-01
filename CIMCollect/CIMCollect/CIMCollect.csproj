@@ -84,12 +84,14 @@
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
     <Compile Include="PSRunner.cs" />
+    <Compile Include="SqlClasses\BinaryIntegerList.cs" />
     <Compile Include="SqlClasses\Hasher.cs" />
     <Compile Include="SqlClasses\MemoryZip.cs" />
     <Compile Include="SqlClasses\MsSqlInventory.cs" />
     <Compile Include="SqlClasses\SqlAbstract.cs" />
     <Compile Include="SqlClasses\SqlCleaner.cs" />
     <Compile Include="SqlClasses\SQLHandler.cs" />
+    <Compile Include="SQLHandlerBase.cs" />
     <Compile Include="SqlSynopsis.cs" />
     <Compile Include="SringCompareExtensionsLike.cs" />
     <Compile Include="Utilities.cs" />

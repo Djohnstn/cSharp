@@ -9,6 +9,8 @@ using System.Runtime.Serialization.Json;
 using System.Globalization;
 using System.Collections.Concurrent;
 using CIMSave;
+using CIMCollect.SqlClasses;
+using System.Diagnostics;
 
 namespace DirectorySecurityList
 {
@@ -737,30 +739,68 @@ namespace DirectorySecurityList
             //}
         }
 
-        private Dictionary<int, int> JsonACLIDtoDBID = new Dictionary<int, int>();
-        public int ToDB(string connectionString)
+#pragma warning disable IDE0044 // Add readonly modifier
+        private Dictionary<int, int> JsonACLIDtoDBID = new Dictionary<int, int>(30);
+#pragma warning restore IDE0044 // Add readonly modifier
+                               //         public int ToDB(string connectionString)
+
+        public int ToDB()
         {
             int records = 0;
-
+            if (JsonACLIDtoDBID ==null)
+            {
+                JsonACLIDtoDBID = new Dictionary<int, int>(300);
+            }
             foreach(var idAcl in idList)
             {
                 var idNumber = idAcl.Key;
-                int ix = 0;
                 int aCLdbId = this.ACLdbId(idAcl.Value);
-                throw new NotImplementedException(ix.ToString());
+                JsonACLIDtoDBID.Add(idNumber, aCLdbId); // save result for binding from FileList to proper database id
+                //throw new NotImplementedException(ix.ToString());
             }
 
             return records;
         }
+
         private int ACLdbId(ACL aCL)
         {
+            //var aceList = new List<int>();
+            var intList = new BinaryIntegerList();
             foreach (var x in aCL.list)
             {
-                var id = x.Key;
-                int aCEdbId = this.ACEdbId(x.Value);
+                //var id = x.Key;
+                // may not need to do  anything with the "id"? I'm resolving ACE(Principal and access) to database ACL
+                int aceid = this.ACEdbId(x.Value);
+                //aceList.Add(aceid);
+                intList.Add(aceid);
             }
-            return 0;
+            var intSum = intList.ToRLE();
+            Debug.WriteLine(intList.ToString());
+            //var aceXSum = IntListCheckSum(aceList);
+
+            // aceXSum is "mostly" unique, shouldgive list of 1 ACLs per ACEXSum match
+            // do ACLID query,
+            // if no match
+                // create an ACL(1)-ACE(*) list
+                // create an ACL(1)(aceid) list
+            // do ACLID query again
+            // if not found, try one more time, then throw up.
+            //Console.WriteLine("ACL " + Convert.ToBase64String(aceXSum));
+            return -1;
         }
+
+        //private byte[] IntListCheckSum(List<int> intList)
+        //{
+        //    int[] intArray = intList.ToArray();
+        //    var checksum = new byte[64];
+        //    byte[] result = new byte[intArray.Length * sizeof(int)];
+        //    Buffer.BlockCopy(intArray, 0, result, 0, result.Length);
+        //    using (var sha = new SHA512Managed())
+        //    {
+        //        checksum = sha.ComputeHash(result);
+        //    }
+        //    return checksum;
+        //}
 
         private int ACEdbId(ACE value)
         {
@@ -775,21 +815,71 @@ namespace DirectorySecurityList
             return aceID;
         }
 
-        private int AceDBID(object pNameID, object rightsID)
+        static bool AceDbTableValidated = false;
+
+        private static DBMapper2<int, int, int> mapAceDb =
+            new DBMapper2<int, int, int>(tablename: "ACE_Principal_Rights", defaultvalue: -1,
+                                            nameparameter0: "PrincipalId", nameparameter: "RightsId");
+        private int AceDBID(int pNameID, int rightsID)
         {
-            throw new NotImplementedException();
+            if (!AceDbTableValidated)
+            {
+                DBTableMaker checker = new DBTableMaker("ACE_Principal_Rights");
+                checker.ForColumn("PrincipalId", "INT", nullable: false, indexed: true);
+                checker.ForColumn("RightsId", "INT", nullable: false, indexed: true);
+                RightsTableValidated = checker.ValidateTable();
+            }
+            int id = mapAceDb.ID(pNameID, rightsID);
+            return id;
         }
 
+        static bool RightsTableValidated = false;
+
+        private static DBMapper2<int, string, int> mapRights =
+            new DBMapper2<int, string, int>(tablename: "ACE_Rights", defaultvalue: -1, 
+                                            nameparameter0:  "Rights", nameparameter: "Description");
         private int RightsID(FileSystemRights rights)
         {
+            if (!RightsTableValidated)
+            {
+                DBTableMaker checker = new DBTableMaker("ACE_Rights");
+                checker.ForColumn("Rights", "INT", true, true);
+                checker.ForColumn("Description", "NVARCHAR(120)", true, false);
+                RightsTableValidated = checker.ValidateTable();
+            }
             var description = rights.ToString();
-            throw new NotImplementedException();
+            int rightsInt = (int)rights;
+            int id = mapRights.ID(rightsInt, description);
+            return id;
+            //            throw new NotImplementedException();
         }
 
+#pragma warning disable IDE0044 // Add readonly modifier
+        static bool PrincipalTableValidated = false;
+#pragma warning restore IDE0044 // Add readonly modifier
+
+        private static DBMapper2<string, string, int> mapPrincipal = 
+            new DBMapper2<string, string, int>("ACE_Principal", -1, "PrincipalName", "SID");
         private int PrincipalID(string pName, string pSID)
         {
-            throw new NotImplementedException();
+            if (!PrincipalTableValidated)
+            {
+                var checker = new DBTableMaker("ACE_Principal");
+                checker.ForColumn("PrincipalName", "NVARCHAR(100)", true, true);
+                checker.ForColumn("SID", "NVARCHAR(120)", true, true);
+                RightsTableValidated = checker.ValidateTable();
+            }
+            int id = mapPrincipal.ID(pName,pSID);
+            return id;
         }
 
     }
+
+    public class Instances
+    {
+        private static DBMapper<string, int> map = new DBMapper<string, int>("_Instances", -1, "Name");
+        public static int ID(string name) => map.ID(name);
+        //public int ID2(string name) => (new DBMapper<string, int>("_Instances", -1, "Identity")).ID(name);
+    }
+
 }

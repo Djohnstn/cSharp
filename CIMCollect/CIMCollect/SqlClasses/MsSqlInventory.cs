@@ -378,8 +378,9 @@ namespace DirectorySecurityList
                         var result = new MsSqlTables()
                         {
                             Server = server,
-                            Name = $"{tbschema}.{table}",
                             Instance = instance,
+                            Path = database,
+                            Name = $"{tbschema}.{table}",
                             TableType = row[3].ToString(),
                             //Table = $"{db[0]}.{row[0]}.{row[1]}.{row[2]}:{row[3]}"
                             RecordCount = SqlRecordCount(con, database, tbschema, table)
@@ -509,7 +510,7 @@ namespace DirectorySecurityList
                         {
                             sw.Restart();
                             var spname = database + "." + reader.SafeGetString(1) + "." + reader.SafeGetString(2);
-                            Console.WriteLine($"{Collect.LogTime()} Reading.. MsSqlInventory::SP{spNumber}:[{spname}]");
+                            Console.WriteLine($"{Utilities.LogTime()} Reading.. MsSqlInventory::SP{spNumber}:[{spname}]");
                             //Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlStoredProcedures]");
                         }
                         var rawbase = uspBody.Split(crlf, StringSplitOptions.RemoveEmptyEntries);
@@ -564,35 +565,38 @@ namespace DirectorySecurityList
 
         public void Inventory(string saveToFolder)
         {
-            Console.WriteLine($"{Collect.LogTime()} Begin MsSqlInventory::...");
+            var InventoryFolder = saveToFolder;
+            Console.WriteLine($"{Utilities.LogTime()} Begin MsSqlInventory::...");
 
             sqlinstances = MsSqlServers.GetSqlInstanceNames().ToList<MsSqlServers>();
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlInstanceNames]");
+            MsSqlServers.ToJsonFile(sqlinstances, InventoryTime, InventoryFolder);
+            Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[GetSqlInstanceNames]");
+
             sqlinstances.ForEach(d => { dblist
                                         .AddRange(MsSqlDatabases.GetSqlDatabases(d.Server, d.Name)
                                         .ToList<MsSqlDatabases>()); });
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabases]");
+            MsSqlDatabases.ToJsonFile(dblist, InventoryTime, InventoryFolder);
+            Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabases]");
+
             //dblist.ForEach(d => { tblist.AddRange(GetSqlDatabaseTables(d.Server, d.Instance, d.Database).ToList<MsSqlTables>()); });
             dblist.ForEach(d => { tblist
                                     .AddRange(MsSqlTables.GetSqlDatabaseTables(d.Server, d.Instance, d.Name)); });
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabaseTables]");
+            MsSqlTables.ToJsonFile(tblist, InventoryTime, InventoryFolder);
+            Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[GetSqlDatabaseTables]");
+
             dblist.ForEach(d => { columns
                                     .AddRange(MsSqlTableColumns.GetSqlTableColumns(d.Server, d.Instance, d.Name)
                                     .ToList<MsSqlTableColumns>()); });
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[GetSqlTableColumns]");
+            MsSqlTableColumns.ToJsonFile(columns, InventoryTime, InventoryFolder);
+            Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[GetSqlTableColumns]");
 
             dblist.ForEach(d => { procedures
                                     .AddRange(MsSqlStoredProcedure.GetSqlStoredProcedures(d.Server, d.Instance, d.Name)
                                     .ToList<MsSqlStoredProcedure>()); });
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::({procedures.Count()}):[GetSqlStoredProcedures]");
-
-            var InventoryFolder = saveToFolder;
-            MsSqlServers.ToJsonFile(sqlinstances, InventoryTime, InventoryFolder);
-            MsSqlDatabases.ToJsonFile(dblist, InventoryTime, InventoryFolder);
-            MsSqlTables.ToJsonFile(tblist, InventoryTime, InventoryFolder);
-            MsSqlTableColumns.ToJsonFile(columns, InventoryTime, InventoryFolder);
             MsSqlStoredProcedure.ToJsonFile(procedures, InventoryTime, InventoryFolder);
-            Console.WriteLine($"{Collect.LogTime()} Completed MsSqlInventory::..:[ToJsonFile]");
+            Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[GetSqlStoredProcedures({procedures.Count()})]");
+
+            //Console.WriteLine($"{Utilities.LogTime()} Completed MsSqlInventory::..:[ToJsonFile]");
 
             //var ix = 0;
         }

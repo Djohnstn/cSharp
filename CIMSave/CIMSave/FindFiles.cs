@@ -113,6 +113,10 @@ namespace CIMSave
                     //throw new NotImplementedException(header);
                     break;
                 case 2: // ACL list
+                    {
+                        var x = DirectorySecurityList.ACLSet.FromJSON(filename);
+                        x.ToDB();
+                    }
                     Console.WriteLine($"{LogTime()} Unable to process ACL file {filename}.");
                     Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);

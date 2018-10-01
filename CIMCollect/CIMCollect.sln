@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27130.2027
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CIMCollect", "CIMCollect\CIMCollect.csproj", "{EFBDBBFE-66E8-4C6D-B3C0-955A2E583D10}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CIMSave", "..\CIMSave\CIMSave\CIMSave.csproj", "{50BD78E8-9E47-4638-954A-75D48A63BCCE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{EFBDBBFE-66E8-4C6D-B3C0-955A2E583D10}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EFBDBBFE-66E8-4C6D-B3C0-955A2E583D10}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EFBDBBFE-66E8-4C6D-B3C0-955A2E583D10}.Release|Any CPU.Build.0 = Release|Any CPU
+		{50BD78E8-9E47-4638-954A-75D48A63BCCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{50BD78E8-9E47-4638-954A-75D48A63BCCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{50BD78E8-9E47-4638-954A-75D48A63BCCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{50BD78E8-9E47-4638-954A-75D48A63BCCE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -275,12 +275,10 @@ namespace CIMSave
         private readonly string NameParameter;
         private readonly T2 DefaultValue;
 
-        private bool IndexOnParameter = false;
-
         public DBMapper2(string tablename, T2 defaultvalue, string nameparameter0 = "name0", string nameparameter = "name")
         {
             sqlbase = new SQLHandlerBase();
-            NameParameter0 = nameparameter0;
+            NameParameter = nameparameter0;
             NameParameter = nameparameter;
             this.DefaultValue = defaultvalue;
             InstanceQueries = (from q in xquerys select Clean(q, tablename, nameparameter0, nameparameter)).ToList();
@@ -300,24 +298,21 @@ namespace CIMSave
         const char delim = (char)31; // tab character = 9   // unit separator = 31
         public T2 ID(T0 Name0, T1 Name)
         {
-            var compoundName = $"{Name0}{delim}{Name}";     // different type of KeyPair dictionary
+            var compoundName = $"{Name0}{delim}{Name}";
             if (xIDs.TryGetValue(compoundName, out T2 idCache))
             {
                 return idCache;
             }
-            else
+            var sqlbase = new SQLHandlerBase();
+            foreach (var query in InstanceQueries)
             {
-                var sqlbase = new SQLHandlerBase();
-                foreach (var query in InstanceQueries)
+                T2 id = sqlbase.DoQueryScaler<T0, T1, T2>(query, DefaultValue, 
+                                                            NameParameter0, Name0,
+                                                            NameParameter, Name);
+                if (id != null && !id.Equals(DefaultValue))
                 {
-                    T2 id = sqlbase.DoQueryScaler<T0, T1, T2>(query, DefaultValue,
-                                                                NameParameter0, Name0,
-                                                                NameParameter, Name);
-                    if (id != null && !id.Equals(DefaultValue))
-                    {
-                        xIDs.TryAdd(compoundName, id); // save value to id for next round of lookups, then return it
-                        return id;
-                    }
+                    xIDs.TryAdd(compoundName, id); // save value to id for next round of lookups, then return it
+                    return id;
                 }
             }
             return DefaultValue;
@@ -401,8 +396,7 @@ namespace CIMSave
             bool result = false;
             var sql = $"Select IIF(IndexProperty(Object_Id('{objectname}'), '{objectname2}', 'IndexId') is null, 0, 1)";
             var handlerBase = new SQLHandlerBase();
-            int rc = handlerBase.DoQueryScaler<int>(sql, -2);
-            if (rc > 0) result = true;
+            result = handlerBase.DoQueryScaler<bool>(sql, false);
             return result;
         }
 
@@ -447,7 +441,7 @@ namespace CIMSave
             if (!IfColumnExists(tableName, columnName)) 
             {
                 var nullvalue = nullable ? "NULL" : "";
-                var sql = $"Alter Table {tableName} Add {columnName} {datatype} {nullvalue}";
+                var sql = $"Alter Table {tableName} Add Column {columnName} {nullvalue}";
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(sql);
                 if (indexed)
@@ -462,7 +456,7 @@ namespace CIMSave
             if (!IfIndexExists(tableName, indexColumn))
             {
                 var sql = $"CREATE UNIQUE NONCLUSTERED INDEX [ix{tableName}_{indexColumn}] " + 
-                           $" ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
+                           " ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(sql);
             }

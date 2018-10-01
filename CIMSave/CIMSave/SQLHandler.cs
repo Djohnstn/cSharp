@@ -86,36 +86,6 @@ namespace CIMSave
 
     }
 
-    class InstancesXold
-    {
-        // keep up name to ID translation, no need to go back to SQL for this batch run.
-        static ConcurrentDictionary<string, int> xIDs = new ConcurrentDictionary<string, int>();
-        static readonly string[] xquerys = new string[]
-        {           // try these queries to see if can find the named entity id, or create a named entity id
-                    "Select id from [dbo].[CIM__Instances] Where Identity = @name",
-                    "Insert into [dbo].[CIM__Instances] (Identity) OUTPUT Inserted.ID Values(@name)"
-        };
-        const string NameParameter = "name";
-        public int ID(string Name)
-        {
-            if (xIDs.TryGetValue(Name, out int idCache))
-            {
-                return idCache;
-            }
-            var sqlbase = new SQLHandlerBase();
-            foreach (var query in xquerys)
-            {
-                var id = sqlbase.DoQuery<int>(query, -1, NameParameter, Name);
-                if (id > 0)
-                {
-                    xIDs.TryAdd(Name, id); // save serverid, then return it
-                    return id;
-                }
-            }
-            return -1;
-        }
-    }
-
     public class Instances
     {
         private static DBMapper<string, int> map = new DBMapper<string, int>("_Instances", -1, "Name");

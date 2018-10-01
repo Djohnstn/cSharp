@@ -72,7 +72,7 @@ namespace DirectorySecurityList
                 //_ACESet = ACESet.FromJSON(aclfile);
                 //int ix = 0;
                 _ACLSet = ACLSet.FromJSON(aclfile);
-                _ACLSet.ToDB("");
+                _ACLSet.ToDB();
                 directories = CIMDirectoryCollection.FromJSON(filefile);
             }
         }

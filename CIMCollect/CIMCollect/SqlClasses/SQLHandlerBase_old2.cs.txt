@@ -118,18 +118,6 @@ namespace CIMSave
         }
 
 
-        public T2 DoQueryScaler<T0, T1, T2>(string sqlQuery, T2 defaultValue, 
-                                            string paramName0, T0 paramValue0,
-                                            string paramName, T1 paramValue)
-        {
-            var p = new List<SqlParameter>
-            {
-                new SqlParameter($"@{paramName0}", paramValue0),
-                new SqlParameter($"@{paramName}", paramValue)
-            };
-            return DoQueryScaler<T2>(sqlQuery, defaultValue, p);
-        }
-
         public T2 DoQueryScaler<T1, T2>(string sqlQuery, T2 defaultValue, string paramName, T1 paramValue)
         {
             var p = new List<SqlParameter>
@@ -258,73 +246,6 @@ namespace CIMSave
         }
     }
 
-    public class DBMapper2<T0, T1, T2>
-    {
-        // keep up name to ID translation, no need to go back to SQL for this batch run.
-        static ConcurrentDictionary<string, T2> xIDs = new ConcurrentDictionary<string, T2>();
-        static readonly string[] xquerys = new string[]
-        {           // try these queries to see if can find the named entity id, or create a named entity id
-            "Select id from [%SCHEMA%].[%TABLEPREFIX%%TABLE%] Where %NAMEPARAMETER% = @%NAMEPARAMETER% And %NAMEPARAMETER0% = @%NAMEPARAMETER0%",
-            "Insert into [%SCHEMA%].[%TABLEPREFIX%%TABLE%] (%NAMEPARAMETER0%,%NAMEPARAMETER%) OUTPUT Inserted.ID Values(@%NAMEPARAMETER0%, @%NAMEPARAMETER%)",
-            "Select id from [%SCHEMA%].[%TABLEPREFIX%%TABLE%] Where %NAMEPARAMETER% = @%NAMEPARAMETER% And %NAMEPARAMETER0% = @%NAMEPARAMETER0%",
-        };
-
-        private SQLHandlerBase sqlbase;
-        private readonly List<string> InstanceQueries;
-        private readonly string NameParameter0;
-        private readonly string NameParameter;
-        private readonly T2 DefaultValue;
-
-        private bool IndexOnParameter = false;
-
-        public DBMapper2(string tablename, T2 defaultvalue, string nameparameter0 = "name0", string nameparameter = "name")
-        {
-            sqlbase = new SQLHandlerBase();
-            NameParameter0 = nameparameter0;
-            NameParameter = nameparameter;
-            this.DefaultValue = defaultvalue;
-            InstanceQueries = (from q in xquerys select Clean(q, tablename, nameparameter0, nameparameter)).ToList();
-        }
-
-        private string Clean(string cleanthis, string table, string nameparameter0, string nameparameter)
-        {
-            return new StringBuilder(cleanthis)
-                  .Replace("%SCHEMA%", sqlbase.Schema)
-                  .Replace("%TABLEPREFIX%", sqlbase.TablePrefix)
-                  .Replace("%TABLE%", table)
-                  .Replace("%NAMEPARAMETER0%", nameparameter0)
-                  .Replace("%NAMEPARAMETER%", nameparameter)
-                  .ToString();
-        }
-
-        const char delim = (char)31; // tab character = 9   // unit separator = 31
-        public T2 ID(T0 Name0, T1 Name)
-        {
-            var compoundName = $"{Name0}{delim}{Name}";     // different type of KeyPair dictionary
-            if (xIDs.TryGetValue(compoundName, out T2 idCache))
-            {
-                return idCache;
-            }
-            else
-            {
-                var sqlbase = new SQLHandlerBase();
-                foreach (var query in InstanceQueries)
-                {
-                    T2 id = sqlbase.DoQueryScaler<T0, T1, T2>(query, DefaultValue,
-                                                                NameParameter0, Name0,
-                                                                NameParameter, Name);
-                    if (id != null && !id.Equals(DefaultValue))
-                    {
-                        xIDs.TryAdd(compoundName, id); // save value to id for next round of lookups, then return it
-                        return id;
-                    }
-                }
-            }
-            return DefaultValue;
-        }
-    }
-
-
     public class DBTableMaker
     {
         //static readonly string SampleTable =
@@ -338,11 +259,11 @@ namespace CIMSave
 
         //private string NewTable = string.Empty;
         //private string NewIndex = string.Empty;
-        private readonly string tableName;
+        private string tableName;
 
         public  DBTableMaker(string table)
         {
-            this.tableName =  $"[dbo].[CIM_{table}]" ;
+            this.tableName = table;
             ForTable();
         }
 
@@ -377,13 +298,11 @@ namespace CIMSave
 
         private bool IfExists(string objectname)
         {
-            //const string IfObjectExists = "select IIF(Object_id('%objectname%') is null, 0, 1)";
-            //var qry = IfObjectExists.Replace("%objectname%", objectname);
+            const string IfObjectExists = "select IIF(Object_id('%objectname%') is null, 0, 1)";
             bool result = false;
-            var sql = $"select IIF(Object_id('{objectname}') is null, 0, 1)";
             var handlerBase = new SQLHandlerBase();
-            var rc = handlerBase.DoQueryScaler<int>(sql, -2);
-            if (rc == 1) result = true;
+            var qry = IfObjectExists.Replace("%objectname%", objectname);
+            var rc = handlerBase.DoQueryScaler<int>(qry, -2);
             return result;
         }
 
@@ -393,43 +312,40 @@ namespace CIMSave
 
         private bool IfIndexExists(string objectname, string objectname2)
         {
-            //const string IfObjectIndexExists =
-            //"Select IIF(IndexProperty(Object_Id('%object%'), '%index%', 'IndexId') is null, 0, 1)";
-            //var qry = IfObjectIndexExists
-            //            .Replace("%object%", objectname)
-            //            .Replace("%index%", objectname2);
+            const string IfObjectIndexExists =
+            "Select IIF(IndexProperty(Object_Id('%object%'), '%index%', 'IndexId') is null, 0, 1)";
             bool result = false;
-            var sql = $"Select IIF(IndexProperty(Object_Id('{objectname}'), '{objectname2}', 'IndexId') is null, 0, 1)";
             var handlerBase = new SQLHandlerBase();
-            int rc = handlerBase.DoQueryScaler<int>(sql, -2);
-            if (rc > 0) result = true;
+            var qry = IfObjectIndexExists
+                        .Replace("%object%", objectname)
+                        .Replace("%index%", objectname2);
+            result = handlerBase.DoQueryScaler<bool>(qry, false);
             return result;
         }
 
         // COL_LENGTH ( 'table' , 'column' ) 
         private bool IfColumnExists(string tablename, string columnname)
         {
-            //const string IfObjectIndexExists =
-            //"Select Coalesce(COL_LENGTH('%object%', '%column%'), -1)";
-            //var qry = IfObjectIndexExists
-            //            .Replace("%object%", tablename)
-            //            .Replace("%column%", columnname);
+            const string IfObjectIndexExists =
+            "Select Coalesce(COL_LENGTH('%object%', '%column%'), -1)";
             bool result = false;
-            var sql = $"Select Coalesce(COL_LENGTH('{tablename}', '{columnname}'), -1)";
             var handlerBase = new SQLHandlerBase();
-            var rc = handlerBase.DoQueryScaler<int>(sql, -2);
+            var qry = IfObjectIndexExists
+                        .Replace("%object%", tablename)
+                        .Replace("%column%", columnname);
+            var rc = handlerBase.DoQueryScaler<int>(qry, -2);
             if (rc > -1) result = true;
             return result;
         }
 
-        //private string Clean(string cleanthis, string table, string nameparameter, string datatype)
-        //{
-        //    return new StringBuilder(cleanthis)
-        //          .Replace("%TABLE%", table)
-        //          .Replace("%PRIME%", nameparameter)
-        //          .Replace("%TYPE%", datatype)
-        //          .ToString();
-        //}
+        private string Clean(string cleanthis, string table, string nameparameter, string datatype)
+        {
+            return new StringBuilder(cleanthis)
+                  .Replace("%TABLE%", table)
+                  .Replace("%PRIME%", nameparameter)
+                  .Replace("%TYPE%", datatype)
+                  .ToString();
+        }
 
         public void ForTable()
         {
@@ -447,7 +363,7 @@ namespace CIMSave
             if (!IfColumnExists(tableName, columnName)) 
             {
                 var nullvalue = nullable ? "NULL" : "";
-                var sql = $"Alter Table {tableName} Add {columnName} {datatype} {nullvalue}";
+                var sql = $"Alter Table {tableName} Add Column {columnName} {nullvalue}";
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(sql);
                 if (indexed)
@@ -462,7 +378,7 @@ namespace CIMSave
             if (!IfIndexExists(tableName, indexColumn))
             {
                 var sql = $"CREATE UNIQUE NONCLUSTERED INDEX [ix{tableName}_{indexColumn}] " + 
-                           $" ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
+                           " ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(sql);
             }

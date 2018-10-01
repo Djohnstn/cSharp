@@ -3,6 +3,7 @@ using Microsoft.Extensions.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -99,6 +100,26 @@ namespace AppDirectoryService
                 }
             }
             return outlist.ToArray(); 
+        }
+
+        public void TestSqLite()
+        {
+            // https://www.codeproject.com/Questions/823715/How-to-create-tables-in-sqlite-in-memory-databases
+            // http://system.data.sqlite.org/index.html/doc/trunk/www/index.wiki
+            string querytext = "select 1 ";
+            //  or: FullUri=file::memory:?cache=shared;
+            using (var connection = new SQLiteConnection("Data Source=:memory:"))
+            {
+                connection.Open();
+                using (var command = new SQLiteCommand(querytext, connection))
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var foo = reader.GetString(0);
+                    }
+                }
+            }
         }
 
         public InsertedHistory AddHistory(IQueryCollection query, ConnectionInfo connection, string ConxString)

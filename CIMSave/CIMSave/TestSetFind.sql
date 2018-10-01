@@ -589,3 +589,8 @@ begin;
 
 
 end;
+
+
+
+Select Coalesce(COL_LENGTH('CIM__Paths', 'id'), -1)
+select OBJECT_ID('dbox.cim__paths')
