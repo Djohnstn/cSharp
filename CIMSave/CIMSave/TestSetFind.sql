@@ -47,7 +47,9 @@ begin
 		--INDEX IX4 NONCLUSTERED( id, grp)
 	);
 end;
-
+/*
+select count(*) from #set;
+*/
 if not exists (Select 1 from #set )
 begin
 	insert into #set (grp, id)
@@ -120,7 +122,7 @@ SET @t2 = GETDATE();
 if not exists (Select 1 from #set where grp > 20 )
 begin
 	print 'Recalc needed';
-	--insert into #set (grp, id) Select distinct  acl, ace from [TEST_SET_RAND_2]; -- @set2;
+	insert into #set (grp, id) Select distinct  acl, ace from [TEST_SET_RAND_2]; -- @set2;
 end;
 Declare @setnumber int = (Select top 1 grp from #set s where s.grp >= Rand() * (@SETS + 10) order by s.grp)
 --Select @setnumber as SetNumber
@@ -592,5 +594,113 @@ end;
 
 
 
-Select Coalesce(COL_LENGTH('CIM__Paths', 'id'), -1)
-select OBJECT_ID('dbox.cim__paths')
+--Select Coalesce(COL_LENGTH('CIM__Paths', 'id'), -1)
+--select OBJECT_ID('dbox.cim__paths')
+
+
+
+
+declare @News2 TABLE (id int INDEX IX1 CLUSTERED); -- interesting, index speeds this from 100 ms to 40ms
+--insert into @News (id) values (1), (2), (3)
+insert into @News2 (id) select distinct id from #set s where s.grp = 5; -- what set to look at this time
+
+
+With 
+Candidates as (
+	Select s0.grp from #set as s0 inner join @News2 as n1 on n1.id = s0.id
+),
+SetDiscovery as (
+	Select s1.grp from #set as s1 inner join @News2 as n1 on n1.id = s1.id
+	Group by s1.grp
+	Having Count(s1.id) = (Select count(*) from @News2)
+	   and Count(n1.id) = (Select count(*) from @News2)
+	Except -- sets with parts not in new group -- this will be a huge list
+	Select s2.grp from #set as s2 
+		--inner join Candidates c0 on c0.grp = s2.grp
+		where Not Exists (Select 1 from @News2 n2 Where n2.id = s2.id)
+)
+Select s.grp from SetDiscovery s;
+
+------------------
+
+Declare @csv2 varchar(4000) = '1,2,4,5';
+select *
+	from (Select CAST('<x><r>' + REPLACE(@csv2,',','</r><r>') + '</r></x>' AS XML) as x) t
+	CROSS APPLY x.nodes('/x/r')m(n)
+
+SELECT LTRIM(RTRIM(m.n.value('.[1]','varchar(8000)'))) AS Certs --,
+	--	m.n.value('.[1]','varchar(99)') AS Certs2
+FROM (Select CAST('<x><r>' + REPLACE(@csv2,',','</r><r>') + '</r></x>' AS XML)) AS x 
+		) t
+CROSS APPLY x.nodes('/x/r')m(n);
+----
+
+go
+	Declare @strString varchar(3000) = '1,2,4,5';
+	DECLARE @x XML 
+    SELECT @x = CAST('<A>'+ REPLACE(@strString,',','</A><A>')+ '</A>' AS XML)
+    --INSERT INTO @Result            
+    SELECT t.value('.', 'int') AS inVal
+    FROM @x.nodes('/A') AS x(t)
+	--select * from @result;
+go
+
+go
+	Declare @strString nvarchar(3000) = '1,2,4,5';
+	--DECLARE @x XML 
+ --   SELECT @x = CAST('<A>'+ REPLACE(@strString,',','</A><A>')+ '</A>' AS XML)
+ --   SELECT t.value('.', 'int') AS inVal FROM @x.nodes('/A') AS x(t)
+ --   SELECT t.value('.', 'int') AS inVal FROM @x.nodes('/A') AS x(t)
+
+	;With foo as (Select CONVERT(XML, N'<A>'+ REPLACE(@strString,',','</A><A>') + N'</A>') as x)
+	select * from foo as x
+		CROSS APPLY x.nodes('/x/r') m --(n);
+	;
+	SELECT t -- t.value('.', 'int') AS v 
+	FROM () as x(t) --.nodes('/A') AS x(t)
+
+
+go
+ 
+-- setup 1
+ CREATE TYPE dbo.TVP_INT AS TABLE(id INT);
+
+go
+
+Create Procedure dbo.SelectOrInsert_ACL 
+		@tvp dbo.TVP_INT READONLY,
+		@hash varbinary(250)
+as
+begin
+	set nocount on;
+	
+	-- [dbo].[CIM_ACL_Entry] id, hash			ACL to ACE hash finder
+	-- [dbo].[CIM_ACL_ACE] id, ACLID, ACEID		ACE to ACL details finder
+
+	Declare @tvpCount int = (Select Count(*) from @tvp);
+	Declare @tmp table(id int);
+	With Candidates as (
+		Select s0.id 
+		from dbo.CIM_ACL_Entry as s0 
+		Where s0.hash = @hash
+	),
+	SetDiscovery as (
+		Select s1.ACLID 
+		from dbo.CIM_ACL_ACE as s1 
+		inner join Candidates c0 on c0.id = s1.ACLID
+		inner join @tvp as n1 on n1.id = s1.ACEID
+		Group by s1.ACLID
+		Having Count(s1.ACEID) = @tvpCount
+		   and Count(n1.id) = @tvpCount
+		Except -- sets with parts not in new group -- this may or will be a huge list
+		Select s2.ACLID from dbo.CIM_ACL_ACE as s2 
+			inner join Candidates c0 on c0.id = s2.ACLID
+			where Not Exists (Select 1 from @tvp n2 Where n2.id = s2.id)
+	)
+	Insert Into @tmp (id)
+	Select s.ACLID from SetDiscovery s;
+
+	-- if count(*) @tmp = 0 or is null then need a new acl
+
+end
+go

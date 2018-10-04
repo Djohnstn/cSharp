@@ -11,6 +11,8 @@ using System.Collections.Concurrent;
 using CIMSave;
 using CIMCollect.SqlClasses;
 using System.Diagnostics;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace DirectorySecurityList
 {
@@ -746,6 +748,7 @@ namespace DirectorySecurityList
 
         public int ToDB()
         {
+            tvpSetup();
             int records = 0;
             if (JsonACLIDtoDBID ==null)
             {
@@ -762,24 +765,41 @@ namespace DirectorySecurityList
             return records;
         }
 
+        private static bool tvpSetupDone = false;
+        const string tvpTypeInt = "dbo.TVP_INT";
+        private void tvpSetup()
+        {
+            if (tvpSetupDone) return;
+            tvpSetupDone = true;
+            const string makeTVP = "CREATE TYPE dbo.TVP_INT AS TABLE(id INT); ";
+            var db = new DBTableMaker();
+            if (!db.IfExists(tvpType))
+            {
+                var handlerBase = new SQLHandlerBase();
+                handlerBase.DoQueryNonScaler(makeTVP);
+            }
+
+        }
+
         private int ACLdbId(ACL aCL)
         {
-            //var aceList = new List<int>();
-            var intList = new BinaryIntegerList();
-            foreach (var x in aCL.list)
+            var aceList = new List<int>();
+            var aceListHasher = new BinaryIntegerList();
+            foreach (var acl in aCL.list)
             {
                 //var id = x.Key;
                 // may not need to do  anything with the "id"? I'm resolving ACE(Principal and access) to database ACL
-                int aceid = this.ACEdbId(x.Value);
-                //aceList.Add(aceid);
-                intList.Add(aceid);
+                int aceid = this.ACEdbId(acl.Value);
+                aceList.Add(aceid);
+                aceListHasher.Add(aceid);
             }
-            var intSum = intList.ToRLE();
-            Debug.WriteLine(intList.ToString());
+            var aclHash = aceListHasher.ToRLE();
+            Debug.WriteLine(aceListHasher.ToString());
             //var aceXSum = IntListCheckSum(aceList);
 
-            // aceXSum is "mostly" unique, shouldgive list of 1 ACLs per ACEXSum match
+            // aceXSum is "mostly" unique, should give list of 1 ACLs per ACEXSum match
             // do ACLID query,
+            var aclid = AclID(aceList, aclHash);
             // if no match
                 // create an ACL(1)-ACE(*) list
                 // create an ACL(1)(aceid) list
@@ -789,6 +809,75 @@ namespace DirectorySecurityList
             return -1;
         }
 
+        const string monsterACLQuery = @"exec dbo.SelectOrInsert_ACL";
+
+        const string monsterACLInsert1 = @" ";  // insert into acl table (acl, acel-list-hash)
+        const string monsterACLInsert2 = @" ";  // insert into acl-ace table
+
+        private int AclID(List<int> aceList, byte[] aclHash)
+        {
+            var sqlbase = new SQLHandlerBase();
+            var connectStr = sqlbase.ConnectionString;
+            int ID = -1;
+            bool aclExists = false;
+            using (var connection = new SqlConnection(connectStr))
+            {
+                connection.Open();
+                using (SqlCommand cmd = new SqlCommand(monsterACLQuery, connection))
+                {
+                    var pList = new SqlParameter("@tvp", SqlDbType.Structured)
+                    {
+                        TypeName = tvpTypeInt,
+                        Value = aceList
+                    };
+                    var pHash = new SqlParameter("@hash", SqlDbType.VarBinary, aclHash.Length)
+                    {
+                        Value = aclHash
+                    };
+
+                    cmd.Parameters.Add(pList);
+                    cmd.Parameters.Add(pHash);
+
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            ID = dr.GetInt32(0);
+                            aclExists = true;
+                        }
+                    }
+                }
+                if (!aclExists)
+                {
+                    using (SqlCommand cmd = new SqlCommand(monsterACLInsert1, connection))
+                    {
+                        var pList = new SqlParameter("@tvp", SqlDbType.Structured)
+                        {
+                            TypeName = tvpTypeInt,
+                            Value = aceList
+                        };
+                        var pHash = new SqlParameter("@hash", SqlDbType.VarBinary, aclHash.Length)
+                        {
+                            Value = aclHash
+                        };
+
+                        cmd.Parameters.Add(pList);
+                        cmd.Parameters.Add(pHash);
+                        using (var dr = cmd.ExecuteReader())
+                        {
+                            while (dr.Read())
+                            {
+                                ID = dr.GetInt32(0);
+                                aclExists = true;
+                            }
+                        }
+
+                    }
+
+                }
+                return ID;
+            }
+        }
         //private byte[] IntListCheckSum(List<int> intList)
         //{
         //    int[] intArray = intList.ToArray();

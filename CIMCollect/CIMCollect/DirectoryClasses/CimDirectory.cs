@@ -120,5 +120,12 @@ namespace DirectorySecurityList
             return GZfileIO.ReadGZtoPOCO<CIMDirectoryCollection>(jsonfilename);
             //return GZfileIO.ReadGZtoJson<CIMDirectoryCollection>(jsonfilename);
         }
+
+        internal void ToDB(ACLSet aclset)
+        {
+
+
+            throw new NotImplementedException();
+        }
     }
 }

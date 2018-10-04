@@ -340,9 +340,13 @@ namespace CIMSave
         //private string NewIndex = string.Empty;
         private readonly string tableName;
 
-        public  DBTableMaker(string table)
+        public DBTableMaker()
         {
-            this.tableName =  $"[dbo].[CIM_{table}]" ;
+        }
+        public DBTableMaker(string table)
+        {
+            var b = new SQLHandlerBase();
+            this.tableName =  $"[{b.Schema}].[{b.TablePrefix}_{table}]" ;
             ForTable();
         }
 
@@ -375,7 +379,7 @@ namespace CIMSave
         //    return result;
         //}
 
-        private bool IfExists(string objectname)
+        public bool IfExists(string objectname)
         {
             //const string IfObjectExists = "select IIF(Object_id('%objectname%') is null, 0, 1)";
             //var qry = IfObjectExists.Replace("%objectname%", objectname);

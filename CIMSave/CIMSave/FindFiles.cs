@@ -108,6 +108,15 @@ namespace CIMSave
                     HandleInfoParts(filename, schema);
                     break;
                 case 1: // Directories - file inventory
+                    {
+                        // pull the ACLs into the database
+                        var acl = DirectorySecurityList.ACLSet.FromJSON(filename);
+                        acl.ToDB();
+                        // now can use the ACLs via json ACL id => database ACL id
+
+                        var files = DirectorySecurityList.CIMDirectoryCollection.FromJSON(filename);
+                        files.ToDB(acl);
+                    }
                     Console.WriteLine($"{LogTime()} Unable to process directory file {filename}.");
                     Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
@@ -117,8 +126,8 @@ namespace CIMSave
                         var x = DirectorySecurityList.ACLSet.FromJSON(filename);
                         x.ToDB();
                     }
-                    Console.WriteLine($"{LogTime()} Unable to process ACL file {filename}.");
-                    Console.WriteLine($" >>>{header}<<< ");
+                    //Console.WriteLine($"{LogTime()} Unable to process ACL file {filename}.");
+                    //Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
                     break;
                 case -1: // unknown
