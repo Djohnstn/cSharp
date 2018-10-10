@@ -458,8 +458,16 @@ namespace Similarity
                     hashedValue = ShortHash(word);
                 }
                 else if (word.Length < 9 && word.All(char.IsDigit))
-                {   // 8 digits is less than 26 * 52 ^ 4 = 190_102_016
-                    hashedValue = DigitHash(word);
+                {   
+                    if (word.Length < 5)
+                    {
+                        hashedValue = word; // just copy small numbers forward as their own hash
+                    }
+                    else
+                    {
+                        // 8 digits is less than 26 * 52 ^ 4 = 190_102_016
+                        hashedValue = DigitHash(word);
+                    }
                 }
                 else
                 {

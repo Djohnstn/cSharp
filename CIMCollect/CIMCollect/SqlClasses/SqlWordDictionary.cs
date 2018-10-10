@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace CIMCollect.SqlClasses
 {
+    // this is a dictionary of all word phrases in the stored procedures as of last year, 
+    // so it'll compress a lot of words down to 1, 2, or 3 characters of text, giving great compression at high speed.
     public static class SqlWordDictionary
     {
         public static bool TryGetHash(string key, out string value)
