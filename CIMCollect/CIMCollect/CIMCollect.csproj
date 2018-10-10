@@ -91,6 +91,7 @@
     <Compile Include="SqlClasses\SqlAbstract.cs" />
     <Compile Include="SqlClasses\SqlCleaner.cs" />
     <Compile Include="SqlClasses\SQLHandler.cs" />
+    <Compile Include="SqlClasses\SqlWordDictionary.cs" />
     <Compile Include="SQLHandlerBase.cs" />
     <Compile Include="SqlSynopsis.cs" />
     <Compile Include="SringCompareExtensionsLike.cs" />

@@ -237,8 +237,11 @@ namespace StringExtensionsIsLike
                 case '(':
                 case ')':
                 case ',':
+                case ':':
                 case ';':
                 case '+':
+                case '<':
+                case '>':
                 case '.':
                     want = true;
                     break;
