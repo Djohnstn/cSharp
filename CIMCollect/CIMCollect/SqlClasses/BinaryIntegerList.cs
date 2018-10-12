@@ -32,7 +32,7 @@ namespace CIMCollect.SqlClasses
         public byte[] ToRLE()
         {
             //bool success = false;
-            if (integers.Count < 5)
+            if (integers.Count <= 4)
             {
                 // might just return the integer array
                 var intarray = integers.ToArray();
@@ -62,9 +62,17 @@ namespace CIMCollect.SqlClasses
                     return returned;
                 }
                 else
-                {
-                    // return hash of integer array
-                    returned = IntListCheckSum();
+                {   // hash the shorter, denser list of bytes
+                    if (rle.Count > integers.Count * sizeof(int))
+                    {
+                        // return hash of integer array
+                        returned = IntListCheckSum();
+                    }
+                    else
+                    {
+                        // return hash of RLE byte array
+                        returned = ByteListCheckSum(rle);
+                    }
                     return returned;
                 }
             }
@@ -80,6 +88,21 @@ namespace CIMCollect.SqlClasses
             {
                 checksum[0] = (byte)ListType.SHA;
                 Array.Copy(sha.ComputeHash(result), 0, checksum, 1, 64);
+            }
+            return checksum;
+        }
+
+        private byte[] ByteListCheckSum(List<byte> byteList)
+        {
+            //int[] intArray = byteList.ToArray();
+            var byteArray = byteList.ToArray();
+            //byte[] result = new byte[intArray.Length * sizeof(int)];
+            //Buffer.BlockCopy(intArray, 0, result, 0, result.Length);
+            var checksum = new byte[65];    // byte 0 is flag as hash = 3
+            using (var sha = new SHA512Managed())
+            {
+                checksum[0] = (byte)ListType.SHA;
+                Array.Copy(sha.ComputeHash(byteArray), 0, checksum, 1, 64);
             }
             return checksum;
         }

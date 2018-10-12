@@ -449,6 +449,12 @@ namespace Similarity
             {
                 return value;
             }
+            else if (SqlWordDictionary.TryGetHash(word, out string value2))
+            {   // added 10-10-18
+                // SqlWordDictionary.WordHashBase
+                WordHash.Add(word, value2);
+                return value2;
+            }
             else
             {
                 var hashedValue = string.Empty;

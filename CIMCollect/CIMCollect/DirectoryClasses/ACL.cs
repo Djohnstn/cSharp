@@ -13,6 +13,8 @@ using CIMCollect.SqlClasses;
 using System.Diagnostics;
 using System.Data.SqlClient;
 using System.Data;
+using System.Linq;
+//using System.Reflection;
 
 namespace DirectorySecurityList
 {
@@ -748,7 +750,7 @@ namespace DirectorySecurityList
 
         public int ToDB()
         {
-            tvpSetup();
+            TvpSetup();
             int records = 0;
             if (JsonACLIDtoDBID ==null)
             {
@@ -759,6 +761,7 @@ namespace DirectorySecurityList
                 var idNumber = idAcl.Key;
                 int aCLdbId = this.ACLdbId(idAcl.Value);
                 JsonACLIDtoDBID.Add(idNumber, aCLdbId); // save result for binding from FileList to proper database id
+                records++;
                 //throw new NotImplementedException(ix.ToString());
             }
 
@@ -767,13 +770,14 @@ namespace DirectorySecurityList
 
         private static bool tvpSetupDone = false;
         const string tvpTypeInt = "dbo.TVP_INT";
-        private void tvpSetup()
+        private void TvpSetup()
         {
             if (tvpSetupDone) return;
             tvpSetupDone = true;
             const string makeTVP = "CREATE TYPE dbo.TVP_INT AS TABLE(id INT); ";
             var db = new DBTableMaker();
-            if (!db.IfExists(tvpType))
+            //if (!db.IfExists(tvpTypeInt))
+            if (!db.IfTypeExists(tvpTypeInt))
             {
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(makeTVP);
@@ -806,10 +810,10 @@ namespace DirectorySecurityList
             // do ACLID query again
             // if not found, try one more time, then throw up.
             //Console.WriteLine("ACL " + Convert.ToBase64String(aceXSum));
-            return -1;
+            return aclid;
         }
 
-        const string monsterACLQuery = @"exec dbo.SelectOrInsert_ACL";
+        const string monsterACLQuery = @"dbo.SelectOrInsert_ACL";
 
         const string monsterACLInsert1 = @" ";  // insert into acl table (acl, acel-list-hash)
         const string monsterACLInsert2 = @" ";  // insert into acl-ace table
@@ -825,16 +829,19 @@ namespace DirectorySecurityList
                 connection.Open();
                 using (SqlCommand cmd = new SqlCommand(monsterACLQuery, connection))
                 {
+                    //IEnumerable<int> aceEnumerable = aceList.ToArray().AsEnumerable();
+                    //IEnumerable<int> aceEnumerable = GetEnumerable<int>(aceList).c.ToList<int>();
+                    var aceTable = aceList.ToDataTable("tvp");
                     var pList = new SqlParameter("@tvp", SqlDbType.Structured)
                     {
                         TypeName = tvpTypeInt,
-                        Value = aceList
+                        Value = aceTable
                     };
                     var pHash = new SqlParameter("@hash", SqlDbType.VarBinary, aclHash.Length)
                     {
                         Value = aclHash
                     };
-
+                    cmd.CommandType = CommandType.StoredProcedure;
                     cmd.Parameters.Add(pList);
                     cmd.Parameters.Add(pHash);
 
@@ -878,6 +885,17 @@ namespace DirectorySecurityList
                 return ID;
             }
         }
+
+        //public IEnumerable<T> GetEnumerable<T>(List<T> x)
+        //{
+        //    IEnumerable<T> result = x;
+        //    foreach(var item in x)
+        //    {
+        //        result.
+        //    }
+        //    return result;
+        //}
+
         //private byte[] IntListCheckSum(List<int> intList)
         //{
         //    int[] intArray = intList.ToArray();

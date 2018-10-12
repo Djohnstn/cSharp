@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Data;
 using System;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace CIMSave
 {
@@ -20,6 +22,58 @@ namespace CIMSave
                 fileDt.Rows.Add(myRow);
             }
         }
+
+        // https://code.msdn.microsoft.com/Stored-Procedure-with-6c194514
+        /// <summary> 
+        /// Creates data table from source data. 
+        /// </summary> 
+        private static DataTable ToDataTable_Reflection<T>(this IEnumerable<T> source)
+        {
+            DataTable table = new DataTable();
+
+            //// get properties of T 
+            //var binding = BindingFlags.Public | BindingFlags.Instance | BindingFlags.GetProperty;
+            //var options = PropertyReflectionOptions.IgnoreEnumerable | PropertyReflectionOptions.IgnoreIndexer;
+
+            //var properties = ReflectionExtensions.GetProperties<T>(binding, options).ToList();
+
+            //// create table schema based on properties 
+            //foreach (var property in properties)
+            //{
+            //    table.Columns.Add(property.Name, property.PropertyType);
+            //}
+
+            ////// create table data from T instances 
+            //object[] values = new object[properties.Count];
+
+            //foreach (T item in source)
+            //{
+            //    for (int i = 0; i < properties.Count; i++)
+            //    {
+            //        values[i] = properties[i].GetValue(item, null);
+            //    }
+
+            //    table.Rows.Add(values);
+            //}
+
+            return table;
+        }
+
+        //https://stackoverflow.com/questions/5595353/how-to-pass-table-value-parameters-to-stored-procedure-from-net-code
+        public static DataTable ToDataTable<T>(this IEnumerable<T> source, string columnName)
+        {
+            //private static DataTable CreateDataTable(IEnumerable<long> ids)
+            //{
+                DataTable table = new DataTable();
+                table.Columns.Add(columnName, typeof(T));
+                foreach (T id in source)
+                {
+                    table.Rows.Add(id);
+                }
+                return table;
+            //}
+        }
+
     }
 
     public class SQLHandlerBase
@@ -426,6 +480,18 @@ namespace CIMSave
             return result;
         }
 
+        public bool IfTypeExists(string objectname)
+        {
+            //const string IfObjectExists = "select IIF(Object_id('%objectname%') is null, 0, 1)";
+            //var qry = IfObjectExists.Replace("%objectname%", objectname);
+            bool result = false;
+            var sql = $"select IIF(Type_id('{objectname}') is null, 0, 1)";
+            var handlerBase = new SQLHandlerBase();
+            var rc = handlerBase.DoQueryScaler<int>(sql, -2);
+            if (rc == 1) result = true;
+            return result;
+        }
+
         //private string Clean(string cleanthis, string table, string nameparameter, string datatype)
         //{
         //    return new StringBuilder(cleanthis)
@@ -463,10 +529,14 @@ namespace CIMSave
 
         public void ForIndex(string indexColumn)
         {
-            if (!IfIndexExists(tableName, indexColumn))
+            var ixName = ("ix" + tableName + '_' + indexColumn).Replace('[', '_').Replace(']', '_');
+            //if (!IfIndexExists(tableName, indexColumn))
+            if (!IfIndexExists(tableName, ixName))
             {
-                var sql = $"CREATE UNIQUE NONCLUSTERED INDEX [ix{tableName}_{indexColumn}] " + 
-                           $" ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
+                //var sql = $"CREATE UNIQUE NONCLUSTERED INDEX [ix{tableName}_{indexColumn}] " +
+                //           $" ON [dbo].[CIM_{tableName}]([{indexColumn}] ASC);";
+                var sql = $"CREATE UNIQUE NONCLUSTERED INDEX [{ixName}] " + 
+                           $" ON {tableName} ({indexColumn} ASC);";
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(sql);
             }
