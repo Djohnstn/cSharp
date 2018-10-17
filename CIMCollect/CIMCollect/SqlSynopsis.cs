@@ -398,7 +398,7 @@ namespace CIMCollect
         private void AddToLongStory()
         {
             longStory.Append(currentStatement);
-            Debug.WriteLine(currentStatement);
+            //Debug.WriteLine(currentStatement);
             if (currentRepeat > 1 && currentStatement.Equals("."))
             {
                 longStory.Append(currentStatement);

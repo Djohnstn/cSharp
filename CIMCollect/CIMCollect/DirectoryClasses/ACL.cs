@@ -747,6 +747,17 @@ namespace DirectorySecurityList
         private Dictionary<int, int> JsonACLIDtoDBID = new Dictionary<int, int>(30);
 #pragma warning restore IDE0044 // Add readonly modifier
                                //         public int ToDB(string connectionString)
+        public int GetAclDbId(int jsonACLid)
+        {
+            if (JsonACLIDtoDBID.TryGetValue(jsonACLid, out int value))
+            {
+                return value;
+            }
+            else
+            {
+                return -1;
+            }
+        }
 
         public int ToDB()
         {
@@ -770,17 +781,24 @@ namespace DirectorySecurityList
 
         private static bool tvpSetupDone = false;
         const string tvpTypeInt = "dbo.TVP_INT";
+        const string tvpTypeNVarChar = "dbo.TVP_NVARCHAR";
         private void TvpSetup()
         {
             if (tvpSetupDone) return;
             tvpSetupDone = true;
             const string makeTVP = "CREATE TYPE dbo.TVP_INT AS TABLE(id INT); ";
+            const string makeTVPNVarChar = "CREATE TYPE dbo.TVP_NVARCHAR AS TABLE(name NVARCHAR(255)); ";
             var db = new DBTableMaker();
             //if (!db.IfExists(tvpTypeInt))
             if (!db.IfTypeExists(tvpTypeInt))
             {
                 var handlerBase = new SQLHandlerBase();
                 handlerBase.DoQueryNonScaler(makeTVP);
+            }
+            if (!db.IfTypeExists(tvpTypeNVarChar))
+            {
+                var handlerBase = new SQLHandlerBase();
+                handlerBase.DoQueryNonScaler(makeTVPNVarChar);
             }
 
         }
@@ -815,15 +833,15 @@ namespace DirectorySecurityList
 
         const string monsterACLQuery = @"dbo.SelectOrInsert_ACL";
 
-        const string monsterACLInsert1 = @" ";  // insert into acl table (acl, acel-list-hash)
-        const string monsterACLInsert2 = @" ";  // insert into acl-ace table
+        //const string monsterACLInsert1 = @" ";  // insert into acl table (acl, acel-list-hash)
+        //const string monsterACLInsert2 = @" ";  // insert into acl-ace table
 
         private int AclID(List<int> aceList, byte[] aclHash)
         {
             var sqlbase = new SQLHandlerBase();
             var connectStr = sqlbase.ConnectionString;
             int ID = -1;
-            bool aclExists = false;
+            //bool aclExists = false;
             using (var connection = new SqlConnection(connectStr))
             {
                 connection.Open();
@@ -850,38 +868,38 @@ namespace DirectorySecurityList
                         while (dr.Read())
                         {
                             ID = dr.GetInt32(0);
-                            aclExists = true;
+                            //aclExists = true;
                         }
                     }
                 }
-                if (!aclExists)
-                {
-                    using (SqlCommand cmd = new SqlCommand(monsterACLInsert1, connection))
-                    {
-                        var pList = new SqlParameter("@tvp", SqlDbType.Structured)
-                        {
-                            TypeName = tvpTypeInt,
-                            Value = aceList
-                        };
-                        var pHash = new SqlParameter("@hash", SqlDbType.VarBinary, aclHash.Length)
-                        {
-                            Value = aclHash
-                        };
+                //if (!aclExists)
+                //{
+                //    using (SqlCommand cmd = new SqlCommand(monsterACLInsert1, connection))
+                //    {
+                //        var pList = new SqlParameter("@tvp", SqlDbType.Structured)
+                //        {
+                //            TypeName = tvpTypeInt,
+                //            Value = aceList
+                //        };
+                //        var pHash = new SqlParameter("@hash", SqlDbType.VarBinary, aclHash.Length)
+                //        {
+                //            Value = aclHash
+                //        };
 
-                        cmd.Parameters.Add(pList);
-                        cmd.Parameters.Add(pHash);
-                        using (var dr = cmd.ExecuteReader())
-                        {
-                            while (dr.Read())
-                            {
-                                ID = dr.GetInt32(0);
-                                aclExists = true;
-                            }
-                        }
+                //        cmd.Parameters.Add(pList);
+                //        cmd.Parameters.Add(pHash);
+                //        using (var dr = cmd.ExecuteReader())
+                //        {
+                //            while (dr.Read())
+                //            {
+                //                ID = dr.GetInt32(0);
+                //                aclExists = true;
+                //            }
+                //        }
 
-                    }
+                //    }
 
-                }
+                //}
                 return ID;
             }
         }
@@ -924,17 +942,25 @@ namespace DirectorySecurityList
 
         static bool AceDbTableValidated = false;
 
-        private static DBMapper2<int, int, int> mapAceDb =
-            new DBMapper2<int, int, int>(tablename: "ACE_Principal_Rights", defaultvalue: -1,
-                                            nameparameter0: "PrincipalId", nameparameter: "RightsId");
+        private static DBMapper2<int, int, int> mapAceDb = null;
+            //new DBMapper2<int, int, int>(tablename: "ACE_Principal_Rights", defaultvalue: -1,
+            //                                nameparameter0: "PrincipalId", nameparameter: "RightsId");
         private int AceDBID(int pNameID, int rightsID)
         {
+
+            if (null == mapAceDb)   // initialize this only if it will be used
+            {
+                mapAceDb =
+                    new DBMapper2<int, int, int>(tablename: "ACE_Principal_Rights", defaultvalue: -1,
+                                            nameparameter0: "PrincipalId", nameparameter: "RightsId");
+            }
+
             if (!AceDbTableValidated)
             {
                 DBTableMaker checker = new DBTableMaker("ACE_Principal_Rights");
                 checker.ForColumn("PrincipalId", "INT", nullable: false, indexed: true);
                 checker.ForColumn("RightsId", "INT", nullable: false, indexed: true);
-                RightsTableValidated = checker.ValidateTable();
+                AceDbTableValidated = checker.ValidateTable();
             }
             int id = mapAceDb.ID(pNameID, rightsID);
             return id;
@@ -942,11 +968,18 @@ namespace DirectorySecurityList
 
         static bool RightsTableValidated = false;
 
-        private static DBMapper2<int, string, int> mapRights =
-            new DBMapper2<int, string, int>(tablename: "ACE_Rights", defaultvalue: -1, 
-                                            nameparameter0:  "Rights", nameparameter: "Description");
+        private static DBMapper2<int, string, int> mapRights = null;
+            //new DBMapper2<int, string, int>(tablename: "ACE_Rights", defaultvalue: -1, 
+            //                                nameparameter0:  "Rights", nameparameter: "Description");
         private int RightsID(FileSystemRights rights)
         {
+            if (null == mapRights)
+            {
+                mapRights =
+            new DBMapper2<int, string, int>(tablename: "ACE_Rights", defaultvalue: -1,
+                                            nameparameter0: "Rights", nameparameter: "Description");
+
+            }
             if (!RightsTableValidated)
             {
                 DBTableMaker checker = new DBTableMaker("ACE_Rights");
@@ -965,10 +998,15 @@ namespace DirectorySecurityList
         static bool PrincipalTableValidated = false;
 #pragma warning restore IDE0044 // Add readonly modifier
 
-        private static DBMapper2<string, string, int> mapPrincipal = 
-            new DBMapper2<string, string, int>("ACE_Principal", -1, "PrincipalName", "SID");
+        private static DBMapper2<string, string, int> mapPrincipal = null;
+            //new DBMapper2<string, string, int>("ACE_Principal", -1, "PrincipalName", "SID");
         private int PrincipalID(string pName, string pSID)
         {
+            if (null == mapPrincipal)
+            {
+                mapPrincipal =
+            new DBMapper2<string, string, int>("ACE_Principal", -1, "PrincipalName", "SID");
+            }
             if (!PrincipalTableValidated)
             {
                 var checker = new DBTableMaker("ACE_Principal");

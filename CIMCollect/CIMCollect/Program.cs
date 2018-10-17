@@ -27,11 +27,12 @@ namespace CIMCollect
             Utilities.SemiPause("Collected all data, press any key to exit.", 30);
         }
 
-        //static void Test()
-        //{
-        //    var t = new InventoryToDatabase();
-        //    t.FindFiles();
-        //}
+        static void Test()
+        {
+            //var foo = CIMCollect.SqlClasses.SqlWordDictionary.WordHashBase;
+            //var t = new InventoryToDatabase();
+            //t.FindFiles();
+        }
     }
 
 }

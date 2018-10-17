@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using CIMCollect;
 //using System.Data.DataSetExtensions;
 
@@ -110,23 +111,25 @@ namespace CIMSave
                 case 1: // Directories - file inventory
                     {
                         // pull the ACLs into the database
-                        var acl = DirectorySecurityList.ACLSet.FromJSON(filename);
+                        var aclfilename = Regex.Replace(filename, "_files.json", "_Acls.json", RegexOptions.IgnoreCase);
+                        var acl = DirectorySecurityList.ACLSet.FromJSON(aclfilename);
                         acl.ToDB();
                         // now can use the ACLs via json ACL id => database ACL id
 
                         var files = DirectorySecurityList.CIMDirectoryCollection.FromJSON(filename);
-                        files.ToDB(acl);
+                        var filestoDb = new CimDirectoryToDB(files, acl);
+                        filestoDb.ToDB();
                     }
-                    Console.WriteLine($"{LogTime()} Unable to process directory file {filename}.");
-                    Console.WriteLine($" >>>{header}<<< ");
+                    Console.WriteLine($"{LogTime()} Processed directory file {filename}.");
+                    //Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
                     break;
                 case 2: // ACL list
-                    {
-                        var x = DirectorySecurityList.ACLSet.FromJSON(filename);
-                        x.ToDB();
-                    }
-                    //Console.WriteLine($"{LogTime()} Unable to process ACL file {filename}.");
+                    //{
+                    //    var x = DirectorySecurityList.ACLSet.FromJSON(filename);
+                    //    x.ToDB();
+                    //}
+                    Console.WriteLine($"{LogTime()} ACL file {filename} processed elsewhere.");
                     //Console.WriteLine($" >>>{header}<<< ");
                     //throw new NotImplementedException(header);
                     break;

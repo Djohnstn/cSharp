@@ -329,7 +329,7 @@ namespace CIMSave
         private readonly string NameParameter;
         private readonly T2 DefaultValue;
 
-        private bool IndexOnParameter = false;
+        //private bool IndexOnParameter = false;
 
         public DBMapper2(string tablename, T2 defaultvalue, string nameparameter0 = "name0", string nameparameter = "name")
         {

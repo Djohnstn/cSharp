@@ -60,6 +60,9 @@
     <Compile Include="..\..\CIMSave\CIMSave\CommandlineParameters.cs">
       <Link>CommandlineParameters.cs</Link>
     </Compile>
+    <Compile Include="..\..\CIMSave\CIMSave\SQLHandlerBase.cs">
+      <Link>SqlClasses\SQLHandlerBase.cs</Link>
+    </Compile>
     <Compile Include="..\..\SipHash\SipHash.cs">
       <Link>SipHash.cs</Link>
     </Compile>
@@ -92,7 +95,6 @@
     <Compile Include="SqlClasses\SqlCleaner.cs" />
     <Compile Include="SqlClasses\SQLHandler.cs" />
     <Compile Include="SqlClasses\SqlWordDictionary.cs" />
-    <Compile Include="SQLHandlerBase.cs" />
     <Compile Include="SqlSynopsis.cs" />
     <Compile Include="SringCompareExtensionsLike.cs" />
     <Compile Include="Utilities.cs" />

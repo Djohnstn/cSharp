@@ -7,6 +7,9 @@ using System.Threading;
 using System.IO;
 using System.Collections.Concurrent;
 using CIMSave;
+using System.Data.SqlClient;
+using System.Data;
+using System.Linq;
 
 namespace DirectorySecurityList
 {
@@ -77,6 +80,8 @@ namespace DirectorySecurityList
     [DataContract]
     class CIMDirectoryCollection
     {
+        [DataMember]
+        public string Server = Environment.MachineName;
         // dictionary name, dictionary info
         [DataMember]
         public ConcurrentDictionary<string, CIMDirectoryInfo> Directories = new ConcurrentDictionary<string, CIMDirectoryInfo>();
@@ -121,11 +126,6 @@ namespace DirectorySecurityList
             //return GZfileIO.ReadGZtoJson<CIMDirectoryCollection>(jsonfilename);
         }
 
-        internal void ToDB(ACLSet aclset)
-        {
 
-
-            throw new NotImplementedException();
-        }
     }
 }

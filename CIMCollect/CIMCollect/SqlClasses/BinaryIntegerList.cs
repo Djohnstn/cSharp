@@ -15,7 +15,8 @@ namespace CIMCollect.SqlClasses
         {
             IntegerList = 1,
             RLE = 2,
-            SHA = 3
+            SHAInt = 3,
+            SHARle = 4
         }
 
         SortedSet<int> integers = new SortedSet<int>();
@@ -86,7 +87,7 @@ namespace CIMCollect.SqlClasses
             var checksum = new byte[65];    // byte 0 is flag as hash = 3
             using (var sha = new SHA512Managed())
             {
-                checksum[0] = (byte)ListType.SHA;
+                checksum[0] = (byte)ListType.SHAInt;
                 Array.Copy(sha.ComputeHash(result), 0, checksum, 1, 64);
             }
             return checksum;
@@ -101,7 +102,7 @@ namespace CIMCollect.SqlClasses
             var checksum = new byte[65];    // byte 0 is flag as hash = 3
             using (var sha = new SHA512Managed())
             {
-                checksum[0] = (byte)ListType.SHA;
+                checksum[0] = (byte)ListType.SHARle;
                 Array.Copy(sha.ComputeHash(byteArray), 0, checksum, 1, 64);
             }
             return checksum;
@@ -190,12 +191,13 @@ namespace CIMCollect.SqlClasses
             {
                 var sb = new StringBuilder(integers.Count * 6);
                 sb.Append("New:");
-                int ix = 0;
-                foreach (var value in integers)
-                {
-                    if (ix++ > 0) sb.Append(",");
-                    sb.Append(value.ToString());
-                }
+                sb.Append(string.Join(",", integers));
+                //int ix = 0;
+                //foreach (var value in integers)
+                //{
+                //    if (ix++ > 0) sb.Append(",");
+                //    sb.Append(value.ToString());
+                //}
                 return sb.ToString();
             }
             else
@@ -204,65 +206,78 @@ namespace CIMCollect.SqlClasses
                 switch (type)
                 {
                     case ListType.IntegerList:
-                        int sizeOfArray = returned.Length / sizeof(int);
-                        var intarray = new int[sizeOfArray];
-                        Buffer.BlockCopy(returned, 1, intarray, 0, returned.Length - 1);
-                        //if (!BitConverter.IsLittleEndian) Array.Reverse(temp);
-                        var sb = new StringBuilder(intarray.Length * 6);
-                        sb.Append("Int:");
-                        int ix = 0;
-                        foreach (var value in intarray)
-                        {
-                            if (ix++ > 0) sb.Append(",");
-                            sb.Append(value.ToString());
-                        }
-                        return sb.ToString();
-                        break;
-                    case ListType.SHA:
-                        var bytes = new byte[returned.Length - 1];
-                        Buffer.BlockCopy(returned, 1, bytes, 0, bytes.Length);
-                        return "SHA:" + BitConverter.ToString(bytes);
-                        break;
+                        return IntlistToString();
+                    case ListType.SHAInt:
+                        return BytesToString("SHAi");
+                    case ListType.SHARle:
+                        return BytesToString("SHAr");
                     case ListType.RLE:
-                        int oldvalue = 0;
-                        int thisvalue = 0;
-                        var sbr = new StringBuilder(returned.Length * 3);
-                        for (int ixr = 1; ixr < returned.Length; ixr++)
-                        {
-                            int cur = returned[ixr];
-                            if (cur > 199)
-                            {
-                                //sbr.Append(",");
-                                thisvalue = oldvalue + cur - 200;
-                                if (oldvalue == 0) sbr.Append("1");
-                                sbr.Append("..");
-                                oldvalue = thisvalue;
-                                sbr.Append(oldvalue);
-                                thisvalue = 0;
-                            }
-                            else if (cur > 100)
-                            {
-                                thisvalue = thisvalue * 100 + cur - 100;
-                                oldvalue += thisvalue;
-                                sbr.Append(",");
-                                sbr.Append(oldvalue);
-                                thisvalue = 0;
-                            }
-                            else
-                            {
-                                thisvalue = thisvalue * 100 + cur;
-                            }
-
-                        }
-                        return "RLE:" + sbr.ToString();
-                        //return "RLE:" + BitConverter.ToString(returned) + ":" + sbr.ToString();
-                        break;
+                        return RleToString();
                     default:
-                        return "???:" + BitConverter.ToString(returned);
-                        break;
+                        string typeid = returned[0].ToString();
+                        return BytesToString($"({typeid})");
                 }
             }
         }
 
+        private string BytesToString(string title)
+        {
+            var bytes = new byte[returned.Length - 1];
+            Buffer.BlockCopy(returned, 1, bytes, 0, bytes.Length);
+            return title + ":" + BitConverter.ToString(bytes);
+        }
+
+        private string IntlistToString()
+        {
+            int sizeOfArray = returned.Length / sizeof(int);
+            var intarray = new int[sizeOfArray];
+            Buffer.BlockCopy(returned, 1, intarray, 0, returned.Length - 1);
+            //if (!BitConverter.IsLittleEndian) Array.Reverse(temp);
+            var sb = new StringBuilder(intarray.Length * 6);
+            sb.Append("Int:");
+            int ix = 0;
+            foreach (var value in intarray)
+            {
+                if (ix++ > 0) sb.Append(",");
+                sb.Append(value.ToString());
+            }
+            return sb.ToString();
+        }
+
+        private string RleToString()
+        {
+            int oldvalue = 0;
+            int thisvalue = 0;
+            var sbr = new StringBuilder(returned.Length * 3);
+            for (int ixr = 1; ixr < returned.Length; ixr++)
+            {
+                int cur = returned[ixr];
+                if (cur > 199)
+                {
+                    //sbr.Append(",");
+                    thisvalue = oldvalue + cur - 200;
+                    if (oldvalue == 0) sbr.Append("1");
+                    sbr.Append("..");
+                    oldvalue = thisvalue;
+                    sbr.Append(oldvalue);
+                    thisvalue = 0;
+                }
+                else if (cur > 100)
+                {
+                    thisvalue = thisvalue * 100 + cur - 100;
+                    oldvalue += thisvalue;
+                    sbr.Append(",");
+                    sbr.Append(oldvalue);
+                    thisvalue = 0;
+                }
+                else
+                {
+                    thisvalue = thisvalue * 100 + cur;
+                }
+
+            }
+            return "RLE:" + sbr.ToString();
+            //return "RLE:" + BitConverter.ToString(returned) + ":" + sbr.ToString();
+        }
     }
 }
