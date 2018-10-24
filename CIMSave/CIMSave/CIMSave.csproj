@@ -117,6 +117,14 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="dbo.CalculateSimilarityFromAbstract.sql" />
+    <Content Include="dbo.CIM_FileInventory.sql" />
+    <Content Include="dbo.CIM_FileNameInventory.sql" />
+    <Content Include="dbo.CIM_FileTypeInventory.sql" />
+    <Content Include="dbo.CIM__Instances.sql" />
+    <Content Include="dbo.CIM__Paths.sql" />
+    <Content Include="dbo.fn_IntToBase73.sql" />
+    <Content Include="dbo.SelectOrInsert_ACL.sql" />
     <Content Include="SqlAclGetter.sql" />
     <Content Include="SQLInfo.sql" />
     <Content Include="SqlSimilarityCalc.sql" />
