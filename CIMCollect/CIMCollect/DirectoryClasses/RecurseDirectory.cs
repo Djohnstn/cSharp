@@ -175,7 +175,14 @@ namespace DirectorySecurityList
 
         private Stopwatch threadStopWatch = new Stopwatch();
         private int pauses = 0;
-
+        private int pauseDelay = 500;
+        private int TotalDelayMs = 0;
+        private PerformanceCounter diskBusy = null;
+        private bool AssumePause = false;
+        /// <summary>
+        /// SleepyTimer - sleep for 25 ms every so often, if disk usage > 35%; 
+        /// Don't want to stop the computer for this work.
+        /// </summary>
         private void SleepyTimer()
         {
             if (!threadStopWatch.IsRunning)
@@ -184,11 +191,44 @@ namespace DirectorySecurityList
                 threadStopWatch.Start();
                 Console.WriteLine("Threading StopWatch Started.");
             }
-            else if (threadStopWatch.ElapsedMilliseconds > 200)
+            else if (threadStopWatch.ElapsedMilliseconds > pauseDelay)
             {
-                pauses++;
-                Thread.Sleep(0);
-                Thread.Sleep(25);
+                float busy = 0.0F;
+                if (AssumePause)
+                {
+                    busy = 35.0F;
+                }
+                else {
+                    if (diskBusy == null)
+                    {
+                        try
+                        {
+                            diskBusy = new PerformanceCounter("LogicalDisk", "% Disk Time", _DiskName.Replace("\\", ""));
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("SleepyTimer: " + ex.Message);
+                            AssumePause = true;
+                        }
+                    }
+                    else
+                    {
+                        busy = diskBusy.NextValue();
+                    }
+                }
+                if (busy > 30.0F)
+                {
+                    int delayMs = (int)busy;
+                    TotalDelayMs += delayMs;
+                    pauses++;
+                    Thread.Sleep(0);
+                    Thread.Sleep(delayMs);
+                    if (pauseDelay > 150) pauseDelay -= 50;
+                }
+                else
+                {
+                    if (pauseDelay < 5000) pauseDelay += 100;
+                }
                 threadStopWatch.Restart();
                 Thread.Sleep(0);
             }
@@ -282,7 +322,8 @@ namespace DirectorySecurityList
                     $"Small: {HashCallSmall} @ {smallsec}s={smallper}ms/1;\n" + 
                     $"Tiny: {HashCallTiny}; Hashes Pending at end: {HashPendAtEnd}; Delay time: {pendmillis}ms;\n" +  
                     $"Other: {othersec}s; Errors: {errorCount}; Hashes: Tasks: {HashTasksCreated}; Inline: {HashInlineHandled}.");
-            if (filenames.Length > 0) Console.WriteLine($"Delayed files: {filenames}. Pauses: {pauses}*25ms");
+            if (filenames.Length > 0) Console.WriteLine($"Delayed files: {filenames}.");
+            if (pauses > 0) Console.WriteLine($"File scan pauses: {pauses} = {TotalDelayMs}ms");
         }
 
         public void Save()
