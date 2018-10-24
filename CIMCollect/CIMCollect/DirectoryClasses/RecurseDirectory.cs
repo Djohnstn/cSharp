@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Collections.Specialized;
 using CIMSave;
 using CIMCollect;
+using System.Threading;
 
 namespace DirectorySecurityList
 {
@@ -172,6 +173,26 @@ namespace DirectorySecurityList
         private ACESet _ACESet;
         private ACLSet _ACLSet;
 
+        private Stopwatch threadStopWatch = new Stopwatch();
+        private int pauses = 0;
+
+        private void SleepyTimer()
+        {
+            if (!threadStopWatch.IsRunning)
+            {
+                threadStopWatch.Reset();
+                threadStopWatch.Start();
+                Console.WriteLine("Threading StopWatch Started.");
+            }
+            else if (threadStopWatch.ElapsedMilliseconds > 200)
+            {
+                pauses++;
+                Thread.Sleep(0);
+                Thread.Sleep(25);
+                threadStopWatch.Restart();
+                Thread.Sleep(0);
+            }
+        }
 
         //private ConcurrentBag<Task> driveFileTasks = new ConcurrentBag<Task>();
         private ConcurrentBag<TaskAndFile> driveFileTasks = new ConcurrentBag<TaskAndFile>();
@@ -261,7 +282,7 @@ namespace DirectorySecurityList
                     $"Small: {HashCallSmall} @ {smallsec}s={smallper}ms/1;\n" + 
                     $"Tiny: {HashCallTiny}; Hashes Pending at end: {HashPendAtEnd}; Delay time: {pendmillis}ms;\n" +  
                     $"Other: {othersec}s; Errors: {errorCount}; Hashes: Tasks: {HashTasksCreated}; Inline: {HashInlineHandled}.");
-            if (filenames.Length > 0) Console.WriteLine($"Delayed files: {filenames}.");
+            if (filenames.Length > 0) Console.WriteLine($"Delayed files: {filenames}. Pauses: {pauses}*25ms");
         }
 
         public void Save()
@@ -280,20 +301,26 @@ namespace DirectorySecurityList
         private void SaveDirectories(string filePrefix)
         {
             var dirs = directories.ToJSON();
+#if DEBUG
             GZfileIO.WriteStringToGZ($"{filePrefix}Files.Json", dirs);
+#endif
             GZfileIO.WriteStringToGZ($"{filePrefix}Files.Json.gz", dirs);
         }
 
         private void SaveACLs(string filePrefix)
         {
             var acls = _ACLSet.ToJSON();
+#if DEBUG
             GZfileIO.WriteStringToGZ($"{filePrefix}Acls.Json", acls);
+#endif
             GZfileIO.WriteStringToGZ($"{filePrefix}Acls.Json.gz", acls);
         }
         private void SaveACEs(string filePrefix)
         {
             var aces = _ACESet.ToJSON();
+#if DEBUG
             GZfileIO.WriteStringToGZ($"{filePrefix}Aces.Json", aces);
+#endif
             GZfileIO.WriteStringToGZ($"{filePrefix}Aces.Json.gz", aces);
         }
 
@@ -393,6 +420,7 @@ namespace DirectorySecurityList
                 EachDirException(dir, ex);
             }
 
+            if (depth > 0) SleepyTimer();
             return errorCount;
         }
 

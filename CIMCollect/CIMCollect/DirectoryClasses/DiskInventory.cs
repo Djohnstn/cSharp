@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using CIMCollect;
 
@@ -27,7 +28,10 @@ namespace DirectorySecurityList
             // spin a task for each disk drive
             Parallel.ForEach(allDrives, d =>
             {
+                var priviousePrio = Thread.CurrentThread.Priority;
+                Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
                 Inventory(d);
+                Thread.CurrentThread.Priority = priviousePrio;
             });
         }
 

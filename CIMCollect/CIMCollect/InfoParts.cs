@@ -257,7 +257,9 @@ namespace CIMCollect
 
         public void ToJsonFile(string SaveToFolder = "")
         {
+#if DEBUG
             CIMSave.GZfileIO.WriteStringToGZ(Path.Combine(SaveToFolder, $"{Server}_{Set}.Json"), ToJson());
+#endif
             CIMSave.GZfileIO.WriteStringToGZ(Path.Combine(SaveToFolder, $"{Server}_{Set}.Json.gz"), ToJson());
         }
 
