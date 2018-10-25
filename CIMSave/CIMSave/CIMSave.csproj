@@ -124,6 +124,7 @@
     <Content Include="dbo.CIM__Instances.sql" />
     <Content Include="dbo.CIM__Paths.sql" />
     <Content Include="dbo.fn_IntToBase73.sql" />
+    <Content Include="dbo.fn_RleToString.sql" />
     <Content Include="dbo.SelectOrInsert_ACL.sql" />
     <Content Include="SqlAclGetter.sql" />
     <Content Include="SQLInfo.sql" />

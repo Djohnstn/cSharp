@@ -16,23 +16,19 @@ namespace DirectorySecurityList
         }
         public void EachDisk()
         {
-
             DriveInfo[] allDrives = DriveInfo.GetDrives();
-            // foreach(DriveInfo d in allDrives)
-            //{
-            //    if (d.IsReady && d.DriveType == DriveType.Fixed)
-            //    {
-            //        EachFolder(d.RootDirectory, 0, 0);
-            //    }
-            //}
+            // limit to two disks at a time
+            var TwoTasks = new ParallelOptions { MaxDegreeOfParallelism = 2 };
             // spin a task for each disk drive
-            Parallel.ForEach(allDrives, d =>
-            {
-                var priviousePrio = Thread.CurrentThread.Priority;
-                Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
-                Inventory(d);
-                Thread.CurrentThread.Priority = priviousePrio;
-            });
+            Parallel.ForEach(allDrives, TwoTasks, d => NiceInventoryRunner(d));
+        }
+
+        private void NiceInventoryRunner(DriveInfo d)
+        {
+            var prevPriority = Thread.CurrentThread.Priority;
+            Thread.CurrentThread.Priority = ThreadPriority.BelowNormal;
+            Inventory(d);
+            Thread.CurrentThread.Priority = prevPriority;
         }
 
         private void Inventory(DriveInfo d)
