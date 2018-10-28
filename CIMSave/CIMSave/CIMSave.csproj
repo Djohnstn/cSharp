@@ -127,6 +127,11 @@
     <Content Include="dbo.fn_RleToString.sql" />
     <Content Include="dbo.SelectOrInsert_ACL.sql" />
     <Content Include="SqlAclGetter.sql" />
+    <Content Include="SqlDdl\dbo.CIM_ACE_Principal.sql" />
+    <Content Include="SqlDdl\dbo.CIM_ACE_Principal_Rights.sql" />
+    <Content Include="SqlDdl\dbo.CIM_ACE_Rights.sql" />
+    <Content Include="SqlDdl\dbo.CIM_ACL_ACE.sql" />
+    <Content Include="SqlDdl\dbo.CIM_ACL_Entry.sql" />
     <Content Include="SQLInfo.sql" />
     <Content Include="SqlSimilarityCalc.sql" />
     <Content Include="TestSetFind.sql" />
